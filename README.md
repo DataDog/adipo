@@ -75,15 +75,42 @@ Build one Docker image for amd64 and one for arm64, but each contains a fat bina
 
 ## Installation
 
+### Prerequisites
+
+- Go 1.23 or later (required for ARM64 v8.1+ support via GOARM64)
+- Linux or macOS
+
+### Install with Go
+
 ```bash
-# Build from source
+go install github.com/corentin-chary/adipo/cmd/adipo@latest
+```
+
+This will install `adipo` to `$GOPATH/bin` (usually `~/go/bin`). Make sure this directory is in your `PATH`.
+
+### Build from Source
+
+```bash
+# Clone the repository
 git clone https://github.com/corentin-chary/adipo
 cd adipo
-make
-sudo make install
 
-# Or with Go
-go install github.com/corentin-chary/adipo/cmd/adipo@latest
+# Build
+make build
+
+# Optionally install to /usr/local/bin
+sudo make install
+```
+
+### Alternative Build Systems
+
+For Bazel users, see [BAZEL.md](BAZEL.md) for instructions on building with Bazel.
+
+### Homebrew (Coming Soon)
+
+```bash
+# Not yet available
+brew install adipo
 ```
 
 ## Usage
