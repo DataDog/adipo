@@ -40,10 +40,8 @@ func runCPU(cmd *cobra.Command, args []string) error {
 
 	// Collect and sort feature names
 	var featureNames []string
-	for name, enabled := range caps.Features {
-		if enabled {
-			featureNames = append(featureNames, name)
-		}
+	for name := range caps.Features {
+		featureNames = append(featureNames, name)
 	}
 	sort.Strings(featureNames)
 

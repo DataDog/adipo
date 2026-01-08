@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"os"
 )
@@ -14,6 +15,7 @@ type Reader struct {
 	fileSize int64
 	header   *FormatHeader
 	metadata []*BinaryMetadata
+	closer   io.Closer // Optional closer for file handles
 }
 
 // NewReader creates a new fat binary reader
@@ -21,7 +23,7 @@ func NewReader(input io.ReadSeeker) (*Reader, error) {
 	// Get file size
 	size, err := input.Seek(0, io.SeekEnd)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to seek to end of file: %w", err)
 	}
 
 	reader := &Reader{
@@ -48,12 +50,12 @@ func (r *Reader) parse() error {
 	// Read header (after standalone magic marker)
 	headerOffset := magicOffset + MagicSize
 	if _, err := r.input.Seek(headerOffset, io.SeekStart); err != nil {
-		return err
+		return fmt.Errorf("failed to seek to header offset %d: %w", headerOffset, err)
 	}
 
 	headerData := make([]byte, HeaderSize)
 	if _, err := io.ReadFull(r.input, headerData); err != nil {
-		return err
+		return fmt.Errorf("failed to read header data: %w", err)
 	}
 
 	r.header = &FormatHeader{}
@@ -73,14 +75,14 @@ func (r *Reader) parse() error {
 
 	// Read metadata table
 	if _, err := r.input.Seek(int64(r.header.MetadataOffset), io.SeekStart); err != nil {
-		return err
+		return fmt.Errorf("failed to seek to metadata offset %d: %w", r.header.MetadataOffset, err)
 	}
 
 	r.metadata = make([]*BinaryMetadata, r.header.NumBinaries)
 	for i := uint32(0); i < r.header.NumBinaries; i++ {
 		metaData := make([]byte, MetadataEntrySize)
 		if _, err := io.ReadFull(r.input, metaData); err != nil {
-			return err
+			return fmt.Errorf("failed to read metadata entry %d: %w", i, err)
 		}
 
 		r.metadata[i] = &BinaryMetadata{}
@@ -263,6 +265,14 @@ func (r *Reader) Metadata() []*BinaryMetadata {
 	return r.metadata
 }
 
+// Close closes the reader and any associated resources
+func (r *Reader) Close() error {
+	if r.closer != nil {
+		return r.closer.Close()
+	}
+	return nil
+}
+
 // GetBinaryData reads and returns the compressed data for a specific binary
 func (r *Reader) GetBinaryData(index int) ([]byte, error) {
 	if index < 0 || index >= len(r.metadata) {
@@ -273,13 +283,13 @@ func (r *Reader) GetBinaryData(index int) ([]byte, error) {
 
 	// Seek to binary data
 	if _, err := r.input.Seek(int64(meta.DataOffset), io.SeekStart); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to seek to binary data offset %d: %w", meta.DataOffset, err)
 	}
 
 	// Read compressed data
 	data := make([]byte, meta.CompressedSize)
 	if _, err := io.ReadFull(r.input, data); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read compressed binary data: %w", err)
 	}
 
 	return data, nil
@@ -342,6 +352,12 @@ func OpenFile(path string) (*Reader, error) {
 		return nil, err
 	}
 
-	// Note: The file handle will remain open. Caller should close it if needed.
-	return NewReader(file)
+	reader, err := NewReader(file)
+	if err != nil {
+		file.Close()
+		return nil, err
+	}
+
+	reader.closer = file
+	return reader, nil
 }

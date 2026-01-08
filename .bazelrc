@@ -1,0 +1,27 @@
+# Common Bazel configuration
+build --enable_bzlmod
+build --enable_platform_specific_config
+
+# Go specific settings
+build --incompatible_enable_cc_toolchain_resolution
+
+# Platform-specific settings
+build:linux --platforms=@rules_go//go/toolchain:linux_amd64
+build:macos --platforms=@rules_go//go/toolchain:darwin_arm64
+
+# Output settings
+build --symlink_prefix=bazel-
+
+# Test output
+test --test_output=errors
+
+# Workspace status for version stamping
+build --workspace_status_command=$(pwd)/bazel/workspace_status.sh
+
+# Go proxy settings
+build --action_env=GOPROXY=https://proxy.golang.org,direct
+build --action_env=GOPRIVATE=
+build --action_env=GONOPROXY=
+
+# Allow building targets for different platforms (needed for cross-compilation)
+build --incompatible_enable_cc_toolchain_resolution

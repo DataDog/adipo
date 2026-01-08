@@ -73,7 +73,7 @@ func main() {
 		if verbose {
 			fmt.Fprintf(os.Stderr, "adipo stub: detected CPU: %s\n", caps.String())
 			if debug {
-				fmt.Fprintf(os.Stderr, "adipo stub: CPU features: %v\n", caps.GetFeatureList())
+				fmt.Fprintf(os.Stderr, "adipo stub: CPU features: %v\n", caps.FeatureList())
 			}
 		}
 	}

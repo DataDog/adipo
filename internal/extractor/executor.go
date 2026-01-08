@@ -1,9 +1,12 @@
+//go:build unix
+
 package extractor
 
 import (
 	"fmt"
 	"os"
-	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 // Execute executes a binary at the given path with args and environment
@@ -15,7 +18,7 @@ func Execute(path string, args []string, env []string) error {
 	copy(argv[1:], args)
 
 	// Execute the binary (replaces current process)
-	err := syscall.Exec(path, argv, env)
+	err := unix.Exec(path, argv, env)
 	if err != nil {
 		return fmt.Errorf("exec failed: %w", err)
 	}
@@ -32,7 +35,7 @@ func ExecuteWithPath(path string, argv0 string, args []string, env []string) err
 	copy(argv[1:], args)
 
 	// Execute the binary
-	err := syscall.Exec(path, argv, env)
+	err := unix.Exec(path, argv, env)
 	if err != nil {
 		return fmt.Errorf("exec failed: %w", err)
 	}

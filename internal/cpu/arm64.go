@@ -1,4 +1,4 @@
-// +build arm64
+//go:build arm64
 
 package cpu
 
@@ -24,64 +24,64 @@ func DetectARM64() (*Capabilities, error) {
 
 	// FP (Floating Point) - baseline
 	featureMask |= ARM_FP
-	caps.Features["fp"] = true
+	caps.Features["fp"] = struct{}{}
 
 	// ASIMD (Advanced SIMD) - baseline
 	featureMask |= ARM_ASIMD
-	caps.Features["asimd"] = true
+	caps.Features["asimd"] = struct{}{}
 
 	// AES
 	if cpu.ARM64.HasAES {
 		featureMask |= ARM_AES
-		caps.Features["aes"] = true
+		caps.Features["aes"] = struct{}{}
 	}
 
 	// PMULL
 	if cpu.ARM64.HasPMULL {
 		featureMask |= ARM_PMULL
-		caps.Features["pmull"] = true
+		caps.Features["pmull"] = struct{}{}
 	}
 
 	// SHA1
 	if cpu.ARM64.HasSHA1 {
 		featureMask |= ARM_SHA1
-		caps.Features["sha1"] = true
+		caps.Features["sha1"] = struct{}{}
 	}
 
 	// SHA2
 	if cpu.ARM64.HasSHA2 {
 		featureMask |= ARM_SHA2
-		caps.Features["sha2"] = true
+		caps.Features["sha2"] = struct{}{}
 	}
 
 	// CRC32
 	if cpu.ARM64.HasCRC32 {
 		featureMask |= ARM_CRC32
-		caps.Features["crc32"] = true
+		caps.Features["crc32"] = struct{}{}
 	}
 
 	// ATOMICS (LSE)
 	if cpu.ARM64.HasATOMICS {
 		featureMask |= ARM_ATOMICS
-		caps.Features["atomics"] = true
+		caps.Features["atomics"] = struct{}{}
 	}
 
 	// CPUID
 	if cpu.ARM64.HasCPUID {
 		featureMask |= ARM_CPUID
-		caps.Features["cpuid"] = true
+		caps.Features["cpuid"] = struct{}{}
 	}
 
 	// SVE
 	if cpu.ARM64.HasSVE {
 		featureMask |= ARM_SVE
-		caps.Features["sve"] = true
+		caps.Features["sve"] = struct{}{}
 	}
 
 	// SVE2
 	if cpu.ARM64.HasSVE2 {
 		featureMask |= ARM_SVE2
-		caps.Features["sve2"] = true
+		caps.Features["sve2"] = struct{}{}
 	}
 
 	// Additional features from /proc/cpuinfo
@@ -133,148 +133,148 @@ func parseFeatureFromName(feature string, caps *Capabilities, featureMask *uint6
 	switch feature {
 	case "fp":
 		*featureMask |= ARM_FP
-		caps.Features["fp"] = true
+		caps.Features["fp"] = struct{}{}
 	case "asimd":
 		*featureMask |= ARM_ASIMD
-		caps.Features["asimd"] = true
+		caps.Features["asimd"] = struct{}{}
 	case "aes":
 		*featureMask |= ARM_AES
-		caps.Features["aes"] = true
+		caps.Features["aes"] = struct{}{}
 	case "pmull":
 		*featureMask |= ARM_PMULL
-		caps.Features["pmull"] = true
+		caps.Features["pmull"] = struct{}{}
 	case "sha1":
 		*featureMask |= ARM_SHA1
-		caps.Features["sha1"] = true
+		caps.Features["sha1"] = struct{}{}
 	case "sha2":
 		*featureMask |= ARM_SHA2
-		caps.Features["sha2"] = true
+		caps.Features["sha2"] = struct{}{}
 	case "crc32":
 		*featureMask |= ARM_CRC32
-		caps.Features["crc32"] = true
+		caps.Features["crc32"] = struct{}{}
 	case "atomics":
 		*featureMask |= ARM_ATOMICS
-		caps.Features["atomics"] = true
+		caps.Features["atomics"] = struct{}{}
 	case "fphp":
 		*featureMask |= ARM_FP16
-		caps.Features["fphp"] = true
+		caps.Features["fphp"] = struct{}{}
 	case "asimdhp":
 		*featureMask |= ARM_ASIMDHP
-		caps.Features["asimdhp"] = true
+		caps.Features["asimdhp"] = struct{}{}
 	case "cpuid":
 		*featureMask |= ARM_CPUID
-		caps.Features["cpuid"] = true
+		caps.Features["cpuid"] = struct{}{}
 	case "asimdrdm":
 		*featureMask |= ARM_ASIMDRDM
-		caps.Features["asimdrdm"] = true
+		caps.Features["asimdrdm"] = struct{}{}
 	case "jscvt":
 		*featureMask |= ARM_JSCVT
-		caps.Features["jscvt"] = true
+		caps.Features["jscvt"] = struct{}{}
 	case "fcma":
 		*featureMask |= ARM_FCMA
-		caps.Features["fcma"] = true
+		caps.Features["fcma"] = struct{}{}
 	case "lrcpc":
 		*featureMask |= ARM_LRCPC
-		caps.Features["lrcpc"] = true
+		caps.Features["lrcpc"] = struct{}{}
 	case "dcpop":
 		*featureMask |= ARM_DCPOP
-		caps.Features["dcpop"] = true
+		caps.Features["dcpop"] = struct{}{}
 	case "sha3":
 		*featureMask |= ARM_SHA3
-		caps.Features["sha3"] = true
+		caps.Features["sha3"] = struct{}{}
 	case "sm3":
 		*featureMask |= ARM_SM3
-		caps.Features["sm3"] = true
+		caps.Features["sm3"] = struct{}{}
 	case "sm4":
 		*featureMask |= ARM_SM4
-		caps.Features["sm4"] = true
+		caps.Features["sm4"] = struct{}{}
 	case "asimddp", "dotprod":
 		*featureMask |= ARM_ASIMDDP
-		caps.Features["asimddp"] = true
+		caps.Features["asimddp"] = struct{}{}
 	case "sha512":
 		*featureMask |= ARM_SHA512
-		caps.Features["sha512"] = true
+		caps.Features["sha512"] = struct{}{}
 	case "sve":
 		*featureMask |= ARM_SVE
-		caps.Features["sve"] = true
+		caps.Features["sve"] = struct{}{}
 	case "asimdfhm":
 		*featureMask |= ARM_ASIMDFHM
-		caps.Features["asimdfhm"] = true
+		caps.Features["asimdfhm"] = struct{}{}
 	case "dit":
 		*featureMask |= ARM_DIT
-		caps.Features["dit"] = true
+		caps.Features["dit"] = struct{}{}
 	case "ilrcpc":
 		*featureMask |= ARM_ILRCPC
-		caps.Features["ilrcpc"] = true
+		caps.Features["ilrcpc"] = struct{}{}
 	case "flagm":
 		*featureMask |= ARM_FLAGM
-		caps.Features["flagm"] = true
+		caps.Features["flagm"] = struct{}{}
 	case "ssbs":
 		*featureMask |= ARM_SSBS
-		caps.Features["ssbs"] = true
+		caps.Features["ssbs"] = struct{}{}
 	case "sb":
 		*featureMask |= ARM_SB
-		caps.Features["sb"] = true
+		caps.Features["sb"] = struct{}{}
 	case "paca":
 		*featureMask |= ARM_PACA
-		caps.Features["paca"] = true
+		caps.Features["paca"] = struct{}{}
 	case "pacg":
 		*featureMask |= ARM_PACG
-		caps.Features["pacg"] = true
+		caps.Features["pacg"] = struct{}{}
 	case "sve2":
 		*featureMask |= ARM_SVE2
-		caps.Features["sve2"] = true
+		caps.Features["sve2"] = struct{}{}
 	case "sveaes":
 		*featureMask |= ARM_SVEAES
-		caps.Features["sveaes"] = true
+		caps.Features["sveaes"] = struct{}{}
 	case "svepmull":
 		*featureMask |= ARM_SVEPMULL
-		caps.Features["svepmull"] = true
+		caps.Features["svepmull"] = struct{}{}
 	case "svebitperm":
 		*featureMask |= ARM_SVEBITPERM
-		caps.Features["svebitperm"] = true
+		caps.Features["svebitperm"] = struct{}{}
 	case "svesha3":
 		*featureMask |= ARM_SVESHA3
-		caps.Features["svesha3"] = true
+		caps.Features["svesha3"] = struct{}{}
 	case "svesm4":
 		*featureMask |= ARM_SVESM4
-		caps.Features["svesm4"] = true
+		caps.Features["svesm4"] = struct{}{}
 	case "flagm2":
 		*featureMask |= ARM_FLAGM2
-		caps.Features["flagm2"] = true
+		caps.Features["flagm2"] = struct{}{}
 	case "frint":
 		*featureMask |= ARM_FRINT
-		caps.Features["frint"] = true
+		caps.Features["frint"] = struct{}{}
 	case "svei8mm":
 		*featureMask |= ARM_SVEI8MM
-		caps.Features["svei8mm"] = true
+		caps.Features["svei8mm"] = struct{}{}
 	case "svef32mm":
 		*featureMask |= ARM_SVEF32MM
-		caps.Features["svef32mm"] = true
+		caps.Features["svef32mm"] = struct{}{}
 	case "svef64mm":
 		*featureMask |= ARM_SVEF64MM
-		caps.Features["svef64mm"] = true
+		caps.Features["svef64mm"] = struct{}{}
 	case "svebf16":
 		*featureMask |= ARM_SVEBF16
-		caps.Features["svebf16"] = true
+		caps.Features["svebf16"] = struct{}{}
 	case "i8mm":
 		*featureMask |= ARM_I8MM
-		caps.Features["i8mm"] = true
+		caps.Features["i8mm"] = struct{}{}
 	case "bf16":
 		*featureMask |= ARM_BF16
-		caps.Features["bf16"] = true
+		caps.Features["bf16"] = struct{}{}
 	case "dgh":
 		*featureMask |= ARM_DGH
-		caps.Features["dgh"] = true
+		caps.Features["dgh"] = struct{}{}
 	case "rng":
 		*featureMask |= ARM_RNG
-		caps.Features["rng"] = true
+		caps.Features["rng"] = struct{}{}
 	case "bti":
 		*featureMask |= ARM_BTI
-		caps.Features["bti"] = true
+		caps.Features["bti"] = struct{}{}
 	case "mte":
 		*featureMask |= ARM_MTE
-		caps.Features["mte"] = true
+		caps.Features["mte"] = struct{}{}
 	}
 }
 

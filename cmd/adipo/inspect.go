@@ -42,6 +42,7 @@ func runInspect(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open fat binary: %w", err)
 	}
+	defer reader.Close()
 
 	header := reader.Header()
 	metadata := reader.Metadata()

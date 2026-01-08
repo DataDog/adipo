@@ -2,6 +2,7 @@ package format
 
 import (
 	"crypto/sha256"
+	"fmt"
 	"io"
 	"os"
 )
@@ -72,13 +73,13 @@ func (w *Writer) Write() error {
 
 	// Write stub binary
 	if _, err := w.output.Write(w.stubData); err != nil {
-		return err
+		return fmt.Errorf("failed to write stub binary: %w", err)
 	}
 	w.writePos = int64(len(w.stubData))
 
 	// Write magic marker
 	if _, err := w.output.Write(MagicMarker[:]); err != nil {
-		return err
+		return fmt.Errorf("failed to write magic marker: %w", err)
 	}
 	w.writePos += MagicSize
 
@@ -88,26 +89,26 @@ func (w *Writer) Write() error {
 		return err
 	}
 	if _, err := w.output.Write(headerData); err != nil {
-		return err
+		return fmt.Errorf("failed to write header: %w", err)
 	}
 	w.writePos += HeaderSize
 
 	// Write metadata table
-	for _, entry := range w.entries {
+	for i, entry := range w.entries {
 		metaData, err := entry.Metadata.MarshalBinary()
 		if err != nil {
 			return err
 		}
 		if _, err := w.output.Write(metaData); err != nil {
-			return err
+			return fmt.Errorf("failed to write metadata entry %d: %w", i, err)
 		}
 		w.writePos += MetadataEntrySize
 	}
 
 	// Write binary data
-	for _, entry := range w.entries {
+	for i, entry := range w.entries {
 		if _, err := w.output.Write(entry.Data); err != nil {
-			return err
+			return fmt.Errorf("failed to write binary data %d: %w", i, err)
 		}
 		w.writePos += int64(len(entry.Data))
 	}
@@ -172,7 +173,7 @@ func (w *Writer) calculateLayout() error {
 func (w *Writer) calculateAndWriteChecksum() error {
 	// Seek to start of file
 	if _, err := w.output.Seek(0, io.SeekStart); err != nil {
-		return err
+		return fmt.Errorf("failed to seek to file start for checksum calculation: %w", err)
 	}
 
 	// Create a hash of everything except the checksum field
@@ -185,18 +186,18 @@ func (w *Writer) calculateAndWriteChecksum() error {
 	// Read from start to just before checksum
 	buf := make([]byte, checksumFieldOffset)
 	if _, err := io.ReadFull(w.output, buf); err != nil {
-		return err
+		return fmt.Errorf("failed to read file data for checksum calculation: %w", err)
 	}
 	hasher.Write(buf)
 
 	// Skip checksum field
 	if _, err := w.output.Seek(ChecksumSize, io.SeekCurrent); err != nil {
-		return err
+		return fmt.Errorf("failed to seek past checksum field: %w", err)
 	}
 
 	// Hash the rest of the file
 	if _, err := io.Copy(hasher, w.output); err != nil {
-		return err
+		return fmt.Errorf("failed to read remaining file data for checksum: %w", err)
 	}
 
 	// Calculate checksum
@@ -204,10 +205,10 @@ func (w *Writer) calculateAndWriteChecksum() error {
 
 	// Write checksum to header
 	if _, err := w.output.Seek(checksumFieldOffset, io.SeekStart); err != nil {
-		return err
+		return fmt.Errorf("failed to seek to checksum field offset: %w", err)
 	}
 	if _, err := w.output.Write(checksum); err != nil {
-		return err
+		return fmt.Errorf("failed to write checksum: %w", err)
 	}
 
 	return nil

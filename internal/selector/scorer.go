@@ -1,6 +1,8 @@
 package selector
 
 import (
+	"sort"
+
 	"github.com/corentin-chary/adipo/internal/format"
 )
 
@@ -85,13 +87,9 @@ func (s *Scorer) RankBinaries(binaries []*format.BinaryMetadata) []BinaryScore {
 	}
 
 	// Sort by score descending
-	for i := 0; i < len(scores); i++ {
-		for j := i + 1; j < len(scores); j++ {
-			if scores[j].Score > scores[i].Score {
-				scores[i], scores[j] = scores[j], scores[i]
-			}
-		}
-	}
+	sort.Slice(scores, func(i, j int) bool {
+		return scores[i].Score > scores[j].Score
+	})
 
 	return scores
 }

@@ -146,7 +146,10 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get final size
-	info, _ := os.Stat(createFlags.output)
+	info, err := os.Stat(createFlags.output)
+	if err != nil {
+		return fmt.Errorf("failed to stat output file: %w", err)
+	}
 	fmt.Printf("Fat binary created successfully (%d bytes)\n", info.Size())
 
 	return nil

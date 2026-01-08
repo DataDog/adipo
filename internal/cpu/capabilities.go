@@ -10,7 +10,7 @@ type Capabilities struct {
 	ArchType     format.Architecture // Architecture enum
 	Version      format.ArchVersion  // Architecture version
 	VersionStr   string              // Version string ("v1", "v2", "v8.0", etc.)
-	Features     map[string]bool     // Feature name -> present
+	Features     map[string]struct{} // Feature name -> present (set)
 	FeatureMask  uint64              // Primary 64-bit feature mask
 	ExtMasks     [4]uint64           // Extended feature masks (for future use)
 }
@@ -19,13 +19,14 @@ type Capabilities struct {
 func NewCapabilities(arch string) *Capabilities {
 	return &Capabilities{
 		Architecture: arch,
-		Features:     make(map[string]bool),
+		Features:     make(map[string]struct{}),
 	}
 }
 
 // HasFeature checks if a specific feature is present
 func (c *Capabilities) HasFeature(feature string) bool {
-	return c.Features[feature]
+	_, present := c.Features[feature]
+	return present
 }
 
 // HasAllFeatures checks if all specified features are present
@@ -58,13 +59,11 @@ func (c *Capabilities) String() string {
 	return c.Architecture + "-" + c.VersionStr
 }
 
-// GetFeatureList returns a sorted list of feature names
-func (c *Capabilities) GetFeatureList() []string {
+// FeatureList returns a sorted list of feature names
+func (c *Capabilities) FeatureList() []string {
 	features := make([]string, 0, len(c.Features))
-	for feature, present := range c.Features {
-		if present {
-			features = append(features, feature)
-		}
+	for feature := range c.Features {
+		features = append(features, feature)
 	}
 	return features
 }
