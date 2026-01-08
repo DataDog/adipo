@@ -1,0 +1,11 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "features",
+    srcs = [
+        "bits.go",
+        "names.go",
+    ],
+    importpath = "github.com/corentin-chary/adipo/internal/features",
+    visibility = ["//:__subpackages__"],
+)

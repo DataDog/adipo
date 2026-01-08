@@ -1,0 +1,45 @@
+load("//bazel:adipo.bzl", "adipo_fat_binary")
+
+# Build the C binary for x86-64-v2 (SSE4.2)
+# Note: Static linking only works on Linux. On macOS, binaries will be dynamically linked.
+# Note: These targets require Linux or GCC that supports -march=x86-64-v2/v3
+cc_binary(
+    name = "hello_v2",
+    srcs = ["hello.c"],
+    copts = [
+        "-march=x86-64-v2",
+        "-O2",
+    ],
+    linkopts = select({
+        "@platforms//os:linux": ["-static"],
+        "//conditions:default": [],
+    }),
+    tags = ["manual"],  # Don't build by default (requires Linux or compatible GCC)
+)
+
+# Build the C binary for x86-64-v3 (AVX2)
+cc_binary(
+    name = "hello_v3",
+    srcs = ["hello.c"],
+    copts = [
+        "-march=x86-64-v3",
+        "-O2",
+        "-mavx2",
+    ],
+    linkopts = select({
+        "@platforms//os:linux": ["-static"],
+        "//conditions:default": [],
+    }),
+    tags = ["manual"],  # Don't build by default (requires Linux or compatible GCC)
+)
+
+# Create a fat binary with both versions
+adipo_fat_binary(
+    name = "hello_fat",
+    binaries = {
+        ":hello_v2": "x86-64-v2",
+        ":hello_v3": "x86-64-v3",
+    },
+    compression = "zstd",
+    tags = ["manual"],  # Don't build by default (requires Linux or compatible GCC)
+)

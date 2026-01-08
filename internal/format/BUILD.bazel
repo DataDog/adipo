@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "format",
+    srcs = [
+        "detector.go",
+        "header.go",
+        "reader.go",
+        "spec.go",
+        "writer.go",
+    ],
+    importpath = "github.com/corentin-chary/adipo/internal/format",
+    visibility = ["//:__subpackages__"],
+    deps = ["//internal/features"],
+)
+
+go_test(
+    name = "format_test",
+    srcs = ["format_test.go"],
+    embed = [":format"],
+)

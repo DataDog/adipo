@@ -1,0 +1,28 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "cpu",
+    srcs = [
+        "arm64.go",
+        "arm64_stub.go",
+        "capabilities.go",
+        "detect.go",
+        "features.go",
+        "x86_64.go",
+        "x86_64_stub.go",
+    ],
+    importpath = "github.com/corentin-chary/adipo/internal/cpu",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/features",
+        "//internal/format",
+    ] + select({
+        "@rules_go//go/platform:amd64": [
+            "@org_golang_x_sys//cpu",
+        ],
+        "@rules_go//go/platform:arm64": [
+            "@org_golang_x_sys//cpu",
+        ],
+        "//conditions:default": [],
+    }),
+)

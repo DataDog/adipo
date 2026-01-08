@@ -1,0 +1,56 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("//bazel:adipo.bzl", "adipo_fat_binary")
+
+go_library(
+    name = "go_hello_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/corentin-chary/adipo/examples/go_hello",
+    visibility = ["//visibility:private"],
+)
+
+# Build for x86-64-v1 (baseline)
+go_binary(
+    name = "hello_v1",
+    embed = [":go_hello_lib"],
+    goarch = "amd64",
+    goos = "linux",
+    pure = "on",
+    static = "on",
+    # Go doesn't expose direct control over x86-64 micro-architecture levels
+    # but we can use different GOAMD64 environment variable values
+    # GOAMD64=v1 is the default (baseline)
+)
+
+# Build for x86-64-v2
+go_binary(
+    name = "hello_v2",
+    embed = [":go_hello_lib"],
+    # Set GOAMD64=v2 via gc_goopts
+    gc_goopts = ["-spectre=all"],  # v2+ features
+    goarch = "amd64",
+    goos = "linux",
+    pure = "on",
+    static = "on",
+)
+
+# Build for x86-64-v3
+go_binary(
+    name = "hello_v3",
+    embed = [":go_hello_lib"],
+    goarch = "amd64",
+    goos = "linux",
+    pure = "on",
+    static = "on",
+    # Would use GOAMD64=v3 if we could set it
+)
+
+# Create a fat binary with all three versions
+adipo_fat_binary(
+    name = "hello_fat",
+    binaries = {
+        ":hello_v1": "x86-64-v1",
+        ":hello_v2": "x86-64-v2",
+        ":hello_v3": "x86-64-v3",
+    },
+    compression = "zstd",
+)

@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+# Create a filegroup for the stub binary
+filegroup(
+    name = "stub_binary",
+    srcs = ["//:generate_stub"],
+    visibility = ["//visibility:public"],
+)
+
+# Create a copy of the stub for embedding
+genrule(
+    name = "copy_stub",
+    srcs = ["//:generate_stub"],
+    outs = ["stub.bin"],
+    cmd = "cp $< $@",
+)
+
+go_library(
+    name = "stub",
+    srcs = ["embed.go"],
+    embedsrcs = ["stub.bin"],
+    importpath = "github.com/corentin-chary/adipo/internal/stub",
+    visibility = ["//:__subpackages__"],
+)

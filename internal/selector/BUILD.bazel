@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "selector",
+    srcs = [
+        "matcher.go",
+        "scorer.go",
+        "selector.go",
+    ],
+    importpath = "github.com/corentin-chary/adipo/internal/selector",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cpu",
+        "//internal/format",
+    ],
+)

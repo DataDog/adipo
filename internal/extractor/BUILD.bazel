@@ -1,0 +1,23 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "extractor",
+    srcs = [
+        "disk.go",
+        "executor.go",
+        "extractor.go",
+        "memory.go",
+        "memory_stub.go",
+    ],
+    importpath = "github.com/corentin-chary/adipo/internal/extractor",
+    visibility = ["//:__subpackages__"],
+    deps = select({
+        "@rules_go//go/platform:android": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@rules_go//go/platform:linux": [
+            "@org_golang_x_sys//unix",
+        ],
+        "//conditions:default": [],
+    }),
+)

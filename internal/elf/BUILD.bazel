@@ -1,0 +1,12 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "elf",
+    srcs = [
+        "analyzer.go",
+        "validator.go",
+    ],
+    importpath = "github.com/corentin-chary/adipo/internal/elf",
+    visibility = ["//:__subpackages__"],
+    deps = ["//internal/format"],
+)

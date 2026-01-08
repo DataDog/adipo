@@ -1,0 +1,2 @@
+# Bazel rules for adipo fat binaries
+exports_files(["adipo.bzl"])

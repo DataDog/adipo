@@ -1,0 +1,182 @@
+// +build amd64
+
+package cpu
+
+import (
+	"github.com/corentin-chary/adipo/internal/format"
+	"golang.org/x/sys/cpu"
+)
+
+// DetectX86_64 detects x86-64 CPU capabilities
+func DetectX86_64() (*Capabilities, error) {
+	caps := NewCapabilities("x86-64")
+	caps.ArchType = format.ArchX86_64
+
+	// Build feature mask and map
+	var featureMask uint64
+
+	// SSE3
+	if cpu.X86.HasSSE3 {
+		featureMask |= X86_SSE3
+		caps.Features["sse3"] = true
+	}
+
+	// SSSE3
+	if cpu.X86.HasSSSE3 {
+		featureMask |= X86_SSSE3
+		caps.Features["ssse3"] = true
+	}
+
+	// SSE4.1
+	if cpu.X86.HasSSE41 {
+		featureMask |= X86_SSE4_1
+		caps.Features["sse4.1"] = true
+	}
+
+	// SSE4.2
+	if cpu.X86.HasSSE42 {
+		featureMask |= X86_SSE4_2
+		caps.Features["sse4.2"] = true
+	}
+
+	// POPCNT
+	if cpu.X86.HasPOPCNT {
+		featureMask |= X86_POPCNT
+		caps.Features["popcnt"] = true
+	}
+
+	// AVX
+	if cpu.X86.HasAVX {
+		featureMask |= X86_AVX
+		caps.Features["avx"] = true
+	}
+
+	// AVX2
+	if cpu.X86.HasAVX2 {
+		featureMask |= X86_AVX2
+		caps.Features["avx2"] = true
+	}
+
+	// FMA
+	if cpu.X86.HasFMA {
+		featureMask |= X86_FMA
+		caps.Features["fma"] = true
+	}
+
+	// BMI1
+	if cpu.X86.HasBMI1 {
+		featureMask |= X86_BMI1
+		caps.Features["bmi1"] = true
+	}
+
+	// BMI2
+	if cpu.X86.HasBMI2 {
+		featureMask |= X86_BMI2
+		caps.Features["bmi2"] = true
+	}
+
+	// LZCNT (part of ABM)
+	if cpu.X86.HasBMI1 { // LZCNT is typically part of BMI1
+		featureMask |= X86_LZCNT
+		caps.Features["lzcnt"] = true
+	}
+
+	// Note: MOVBE detection not available in golang.org/x/sys/cpu
+	// This is a relatively uncommon instruction and not critical for our use case
+
+	// OSXSAVE
+	if cpu.X86.HasOSXSAVE {
+		featureMask |= X86_OSXSAVE
+		caps.Features["osxsave"] = true
+	}
+
+	// F16C
+	// Note: golang.org/x/sys/cpu doesn't have direct F16C, but it's typically with AVX
+	// We can infer it from AVX presence on modern CPUs
+	// For now, we'll check if AVX is present
+	// TODO: Add more accurate F16C detection if needed
+
+	// AVX-512 features
+	if cpu.X86.HasAVX512F {
+		featureMask |= X86_AVX512F
+		caps.Features["avx512f"] = true
+	}
+
+	if cpu.X86.HasAVX512DQ {
+		featureMask |= X86_AVX512DQ
+		caps.Features["avx512dq"] = true
+	}
+
+	if cpu.X86.HasAVX512CD {
+		featureMask |= X86_AVX512CD
+		caps.Features["avx512cd"] = true
+	}
+
+	if cpu.X86.HasAVX512BW {
+		featureMask |= X86_AVX512BW
+		caps.Features["avx512bw"] = true
+	}
+
+	if cpu.X86.HasAVX512VL {
+		featureMask |= X86_AVX512VL
+		caps.Features["avx512vl"] = true
+	}
+
+	if cpu.X86.HasAVX512IFMA {
+		featureMask |= X86_AVX512IFMA
+		caps.Features["avx512ifma"] = true
+	}
+
+	if cpu.X86.HasAVX512VBMI {
+		featureMask |= X86_AVX512VBMI
+		caps.Features["avx512vbmi"] = true
+	}
+
+	if cpu.X86.HasAVX512VBMI2 {
+		featureMask |= X86_AVX512VBMI2
+		caps.Features["avx512vbmi2"] = true
+	}
+
+	if cpu.X86.HasAVX512VNNI {
+		featureMask |= X86_AVX512VNNI
+		caps.Features["avx512vnni"] = true
+	}
+
+	if cpu.X86.HasAVX512BITALG {
+		featureMask |= X86_AVX512BITALG
+		caps.Features["avx512bitalg"] = true
+	}
+
+	if cpu.X86.HasAVX512VPOPCNTDQ {
+		featureMask |= X86_AVX512VPOPCNTDQ
+		caps.Features["avx512vpopcntdq"] = true
+	}
+
+	caps.FeatureMask = featureMask
+
+	// Determine x86-64 microarchitecture level
+	caps.Version, caps.VersionStr = detectX86Level(featureMask)
+
+	return caps, nil
+}
+
+// detectX86Level determines the x86-64 microarchitecture level
+func detectX86Level(features uint64) (format.ArchVersion, string) {
+	// Check for v4 (AVX-512)
+	if (features & X86_64_V4_Features) == X86_64_V4_Features {
+		return format.X86_64_V4, "v4"
+	}
+
+	// Check for v3 (AVX2)
+	if (features & X86_64_V3_Features) == X86_64_V3_Features {
+		return format.X86_64_V3, "v3"
+	}
+
+	// Check for v2 (SSE4.2)
+	if (features & X86_64_V2_Features) == X86_64_V2_Features {
+		return format.X86_64_V2, "v2"
+	}
+
+	// Default to v1 (baseline)
+	return format.X86_64_V1, "v1"
+}

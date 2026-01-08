@@ -1,0 +1,65 @@
+package compression
+
+import (
+	"bytes"
+	"io"
+
+	"github.com/pierrec/lz4/v4"
+)
+
+// LZ4Compressor implements lz4 compression
+type LZ4Compressor struct{}
+
+// Compress compresses data using lz4
+func (c *LZ4Compressor) Compress(input []byte, level int) ([]byte, error) {
+	// LZ4 compression level (0-16, where 0 is fastest)
+	// For compatibility with other algorithms, we'll map level to lz4 level
+	// level 1-3 -> lz4 level 0 (fast)
+	// level 4-9 -> lz4 level 9 (default)
+	// level 10+ -> lz4 level 12 (high compression)
+	lz4Level := 9 // default
+	if level > 0 && level <= 3 {
+		lz4Level = 0
+	} else if level > 9 {
+		lz4Level = 12
+	}
+
+	var buf bytes.Buffer
+	writer := lz4.NewWriter(&buf)
+
+	// Set compression level
+	if err := writer.Apply(lz4.CompressionLevelOption(lz4.CompressionLevel(lz4Level))); err != nil {
+		return nil, err
+	}
+
+	if _, err := writer.Write(input); err != nil {
+		writer.Close()
+		return nil, err
+	}
+
+	if err := writer.Close(); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+// Decompress decompresses lz4 data
+func (c *LZ4Compressor) Decompress(input []byte, expectedSize uint64) ([]byte, error) {
+	reader := lz4.NewReader(bytes.NewReader(input))
+
+	// Pre-allocate based on expected size
+	output := make([]byte, 0, expectedSize)
+	buf := bytes.NewBuffer(output)
+
+	if _, err := io.Copy(buf, reader); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+// Name returns the algorithm name
+func (c *LZ4Compressor) Name() string {
+	return "lz4"
+}
