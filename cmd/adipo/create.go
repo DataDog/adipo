@@ -21,6 +21,7 @@ var createFlags struct {
 	level                int
 	verify               bool
 	noStub               bool
+	stubPath             string
 	defaultExtractDir    string
 	defaultCleanupOnExit bool
 	defaultVerbose       bool
@@ -66,6 +67,7 @@ func init() {
 	createCmd.Flags().IntVar(&createFlags.level, "level", 3, "Compression level")
 	createCmd.Flags().BoolVar(&createFlags.verify, "verify", true, "Verify binary format (ELF/Mach-O) and executability")
 	createCmd.Flags().BoolVar(&createFlags.noStub, "no-stub", false, "Create fat binary without self-extracting stub (saves space, requires extraction tool)")
+	createCmd.Flags().StringVar(&createFlags.stubPath, "stub-path", "", "Path to external stub binary (use when embedded stub not available)")
 	createCmd.Flags().StringVar(&createFlags.defaultExtractDir, "default-extract-dir", "", "Default extraction directory for stub/run (supports ~ for home directory)")
 	createCmd.Flags().BoolVar(&createFlags.defaultCleanupOnExit, "default-cleanup-on-exit", true, "Default: clean up extracted binary after execution")
 	createCmd.Flags().BoolVar(&createFlags.defaultVerbose, "default-verbose", false, "Default: show verbose output (CPU detection, selection, extraction)")
@@ -105,9 +107,20 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	var stubArchVer format.ArchVersion
 
 	if !createFlags.noStub {
-		stubData, err = stub.GetStubBinary()
-		if err != nil {
-			return fmt.Errorf("failed to load stub binary: %w", err)
+		// Try to load stub from --stub-path or embedded
+		if createFlags.stubPath != "" {
+			// Load external stub
+			fmt.Printf("Loading stub from: %s\n", createFlags.stubPath)
+			stubData, err = os.ReadFile(createFlags.stubPath)
+			if err != nil {
+				return fmt.Errorf("failed to read stub from %s: %w", createFlags.stubPath, err)
+			}
+		} else {
+			// Try embedded stub
+			stubData, err = stub.GetStubBinary()
+			if err != nil {
+				return fmt.Errorf("failed to load stub binary: %w", err)
+			}
 		}
 
 		fmt.Printf("Stub size: %d bytes\n", len(stubData))

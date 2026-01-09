@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/DataDog/adipo/internal/stub"
 	"github.com/spf13/cobra"
 )
 
@@ -27,7 +28,17 @@ var rootCmd = &cobra.Command{
 optimized for different CPU micro-architectures (x86-64 v1/v2/v3/v4, ARM64 v8/v9).
 
 At runtime, adipo automatically selects and executes the best binary for the current CPU.`,
-	Version: fmt.Sprintf("%s (commit: %s, built: %s)", version, commit, date),
+	Version: getVersionString(),
+}
+
+func getVersionString() string {
+	baseVersion := fmt.Sprintf("%s (commit: %s, built: %s)", version, commit, date)
+
+	stubSize := stub.StubSize()
+	if stubSize > 0 {
+		return fmt.Sprintf("%s, stub: embedded (%d bytes)", baseVersion, stubSize)
+	}
+	return fmt.Sprintf("%s, stub: not embedded", baseVersion)
 }
 
 func init() {

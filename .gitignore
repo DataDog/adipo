@@ -9,8 +9,9 @@
 *.dylib
 adipo
 
-# Stub binary (generated at build time)
+# Stub binary and generated code (generated at build time)
 internal/stub/stub.bin
+internal/stub/stub_generated.go
 
 # Test binary, built with `go test -c`
 *.test
