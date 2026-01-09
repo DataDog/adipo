@@ -71,7 +71,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 		verbose = (stubSettings & format.StubSettingVerbose) != 0
 	}
 
-	cleanupOnExit := true
+	var cleanupOnExit bool
 	if cmd.Flags().Changed("cleanup-on-exit") {
 		cleanupOnExit = *runFlags.cleanupOnExit
 	} else {

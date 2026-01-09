@@ -69,7 +69,7 @@ func main() {
 		extractDir = defaultExtractDir
 	}
 
-	cleanupOnExit := true
+	var cleanupOnExit bool
 	if envCleanupOnExit != "" {
 		cleanupOnExit = envCleanupOnExit == "1"
 	} else {
