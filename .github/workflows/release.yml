@@ -46,25 +46,25 @@ jobs:
           # Build the binary
           make build
 
-          # Create release directory
-          mkdir -p release
-
           # Set binary name based on platform
           BINARY_NAME="adipo"
           if [ "$GOOS" = "windows" ]; then
             BINARY_NAME="adipo.exe"
           fi
 
+          # Create release directory
+          mkdir -p release
+
           # Create archive name following traditional pattern
           ARCHIVE_NAME="adipo-${VERSION}-${GOOS}-${GOARCH}"
 
-          # Create archive
+          # Create archive (binary is in current directory from make build)
           if [ "$GOOS" = "windows" ]; then
             # Windows uses zip
-            zip "release/${ARCHIVE_NAME}.zip" bin/${BINARY_NAME}
+            zip "release/${ARCHIVE_NAME}.zip" ${BINARY_NAME}
           else
             # Linux/macOS use tar.gz
-            tar czf "release/${ARCHIVE_NAME}.tar.gz" -C bin ${BINARY_NAME}
+            tar czf "release/${ARCHIVE_NAME}.tar.gz" ${BINARY_NAME}
           fi
 
           # Generate checksums
