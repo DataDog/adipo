@@ -7,18 +7,33 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
-# Create a copy of the stub for embedding
+# Generate stub_generated.go from the stub binary
 genrule(
-    name = "copy_stub",
-    srcs = ["//:generate_stub"],
-    outs = ["stub.bin"],
-    cmd = "cp $< $@",
+    name = "generate_stub_go",
+    srcs = ["//stub:stub"],
+    outs = ["stub_generated.go"],
+    cmd = """
+    STUB_BIN=$(location //stub:stub)
+    OUTPUT=$@
+
+    # Start the Go file
+    printf 'package stub\\n\\nfunc init() {\\n\\tStubBinary = []byte{' > $$OUTPUT
+
+    # Convert binary to hex bytes
+    od -An -tx1 -v $$STUB_BIN | tr -d ' \\n' | sed 's/../0x&,/g' | sed 's/,$$//' >> $$OUTPUT
+
+    # Close the function
+    printf '}\\n}\\n' >> $$OUTPUT
+    """,
+    visibility = ["//visibility:private"],
 )
 
 go_library(
     name = "stub",
-    srcs = ["embed.go"],
-    embedsrcs = ["stub.bin"],
+    srcs = [
+        "embed.go",
+        ":generate_stub_go",
+    ],
     importpath = "github.com/DataDog/adipo/internal/stub",
     visibility = ["//:__subpackages__"],
 )
