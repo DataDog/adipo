@@ -1,0 +1,162 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build Release Binaries
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+        run: |
+          # Build the binary
+          make build
+
+          # Create release directory
+          mkdir -p release
+
+          # Set binary name based on platform
+          BINARY_NAME="adipo"
+          if [ "$GOOS" = "windows" ]; then
+            BINARY_NAME="adipo.exe"
+          fi
+
+          # Create archive name following traditional pattern
+          ARCHIVE_NAME="adipo-${VERSION}-${GOOS}-${GOARCH}"
+
+          # Create archive
+          if [ "$GOOS" = "windows" ]; then
+            # Windows uses zip
+            zip "release/${ARCHIVE_NAME}.zip" bin/${BINARY_NAME}
+          else
+            # Linux/macOS use tar.gz
+            tar czf "release/${ARCHIVE_NAME}.tar.gz" -C bin ${BINARY_NAME}
+          fi
+
+          # Generate checksums
+          cd release
+          sha256sum ${ARCHIVE_NAME}.* > ${ARCHIVE_NAME}.sha256
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: adipo-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: release/*
+          retention-days: 1
+
+  create-release:
+    name: Create GitHub Release
+    needs: build-release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Consolidate artifacts
+        run: |
+          mkdir -p release
+          find artifacts -type f -exec mv {} release/ \;
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+
+          cat > release_notes.md << EOF
+          ## adipo ${VERSION}
+
+          ### Installation
+
+          Download the appropriate archive for your platform:
+
+          **Linux AMD64:**
+          \`\`\`bash
+          curl -LO https://github.com/${GITHUB_REPOSITORY}/releases/download/${VERSION}/adipo-${VERSION}-linux-amd64.tar.gz
+          tar xzf adipo-${VERSION}-linux-amd64.tar.gz
+          sudo mv adipo /usr/local/bin/
+          \`\`\`
+
+          **Linux ARM64:**
+          \`\`\`bash
+          curl -LO https://github.com/${GITHUB_REPOSITORY}/releases/download/${VERSION}/adipo-${VERSION}-linux-arm64.tar.gz
+          tar xzf adipo-${VERSION}-linux-arm64.tar.gz
+          sudo mv adipo /usr/local/bin/
+          \`\`\`
+
+          **macOS AMD64 (Intel):**
+          \`\`\`bash
+          curl -LO https://github.com/${GITHUB_REPOSITORY}/releases/download/${VERSION}/adipo-${VERSION}-darwin-amd64.tar.gz
+          tar xzf adipo-${VERSION}-darwin-amd64.tar.gz
+          sudo mv adipo /usr/local/bin/
+          \`\`\`
+
+          **macOS ARM64 (Apple Silicon):**
+          \`\`\`bash
+          curl -LO https://github.com/${GITHUB_REPOSITORY}/releases/download/${VERSION}/adipo-${VERSION}-darwin-arm64.tar.gz
+          tar xzf adipo-${VERSION}-darwin-arm64.tar.gz
+          sudo mv adipo /usr/local/bin/
+          \`\`\`
+
+          ### Verifying Downloads
+
+          Verify the integrity of your download using SHA256 checksums:
+          \`\`\`bash
+          sha256sum -c adipo-${VERSION}-<os>-<arch>.sha256
+          \`\`\`
+
+          ### What's Changed
+
+          See commit history for detailed changes.
+          EOF
+
+          echo "RELEASE_NOTES_FILE=release_notes.md" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: ${{ steps.release_notes.outputs.RELEASE_NOTES_FILE }}
+          files: release/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
