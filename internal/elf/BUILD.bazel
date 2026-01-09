@@ -6,7 +6,7 @@ go_library(
         "analyzer.go",
         "validator.go",
     ],
-    importpath = "github.com/corentin-chary/adipo/internal/elf",
+    importpath = "github.com/DataDog/adipo/internal/elf",
     visibility = ["//:__subpackages__"],
     deps = ["//internal/format"],
 )

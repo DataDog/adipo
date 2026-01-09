@@ -4,7 +4,7 @@ load("//bazel:adipo.bzl", "adipo_fat_binary")
 go_library(
     name = "go_hello_lib",
     srcs = ["main.go"],
-    importpath = "github.com/corentin-chary/adipo/examples/go_hello",
+    importpath = "github.com/DataDog/adipo/examples/go_hello",
     visibility = ["//visibility:private"],
 )
 

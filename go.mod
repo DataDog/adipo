@@ -1,4 +1,4 @@
-module github.com/corentin-chary/adipo
+module github.com/DataDog/adipo
 
 go 1.24.0
 

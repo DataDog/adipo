@@ -9,7 +9,7 @@ go_library(
         "memory.go",
         "memory_stub.go",
     ],
-    importpath = "github.com/corentin-chary/adipo/internal/extractor",
+    importpath = "github.com/DataDog/adipo/internal/extractor",
     visibility = ["//:__subpackages__"],
     deps = select({
         "@rules_go//go/platform:android": [

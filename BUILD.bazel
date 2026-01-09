@@ -1,7 +1,7 @@
 load("@gazelle//:def.bzl", "gazelle")
 load("@rules_go//go:def.bzl", "go_library")
 
-# gazelle:prefix github.com/corentin-chary/adipo
+# gazelle:prefix github.com/DataDog/adipo
 gazelle(name = "gazelle")
 
 gazelle(

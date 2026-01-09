@@ -3,7 +3,7 @@ package compression
 import (
 	"fmt"
 
-	"github.com/corentin-chary/adipo/internal/format"
+	"github.com/DataDog/adipo/internal/format"
 )
 
 // Compressor is the interface for compression algorithms

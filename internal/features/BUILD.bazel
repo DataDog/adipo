@@ -6,6 +6,6 @@ go_library(
         "bits.go",
         "names.go",
     ],
-    importpath = "github.com/corentin-chary/adipo/internal/features",
+    importpath = "github.com/DataDog/adipo/internal/features",
     visibility = ["//:__subpackages__"],
 )

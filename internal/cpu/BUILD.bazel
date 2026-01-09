@@ -11,7 +11,7 @@ go_library(
         "x86_64.go",
         "x86_64_stub.go",
     ],
-    importpath = "github.com/corentin-chary/adipo/internal/cpu",
+    importpath = "github.com/DataDog/adipo/internal/cpu",
     visibility = ["//:__subpackages__"],
     deps = [
         "//internal/features",

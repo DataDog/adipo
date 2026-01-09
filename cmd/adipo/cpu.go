@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/corentin-chary/adipo/internal/cpu"
-	"github.com/corentin-chary/adipo/internal/format"
+	"github.com/DataDog/adipo/internal/cpu"
+	"github.com/DataDog/adipo/internal/format"
 	"github.com/spf13/cobra"
 )
 

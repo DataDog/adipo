@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/corentin-chary/adipo/internal/cpu"
-	"github.com/corentin-chary/adipo/internal/format"
-	"github.com/corentin-chary/adipo/internal/selector"
+	"github.com/DataDog/adipo/internal/cpu"
+	"github.com/DataDog/adipo/internal/format"
+	"github.com/DataDog/adipo/internal/selector"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"

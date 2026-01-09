@@ -3,7 +3,7 @@ package selector
 import (
 	"sort"
 
-	"github.com/corentin-chary/adipo/internal/format"
+	"github.com/DataDog/adipo/internal/format"
 )
 
 // BinaryScore represents a scored binary

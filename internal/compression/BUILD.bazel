@@ -9,7 +9,7 @@ go_library(
         "none.go",
         "zstd.go",
     ],
-    importpath = "github.com/corentin-chary/adipo/internal/compression",
+    importpath = "github.com/DataDog/adipo/internal/compression",
     visibility = ["//:__subpackages__"],
     deps = [
         "//internal/format",

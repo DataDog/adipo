@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/corentin-chary/adipo/internal/compression"
-	"github.com/corentin-chary/adipo/internal/cpu"
-	"github.com/corentin-chary/adipo/internal/extractor"
-	"github.com/corentin-chary/adipo/internal/format"
-	"github.com/corentin-chary/adipo/internal/selector"
+	"github.com/DataDog/adipo/internal/compression"
+	"github.com/DataDog/adipo/internal/cpu"
+	"github.com/DataDog/adipo/internal/extractor"
+	"github.com/DataDog/adipo/internal/format"
+	"github.com/DataDog/adipo/internal/selector"
 )
 
 func main() {

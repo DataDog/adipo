@@ -1,6 +1,6 @@
 package cpu
 
-import "github.com/corentin-chary/adipo/internal/features"
+import "github.com/DataDog/adipo/internal/features"
 
 // Re-export feature constants from features package
 const (

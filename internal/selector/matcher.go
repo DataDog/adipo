@@ -1,8 +1,8 @@
 package selector
 
 import (
-	"github.com/corentin-chary/adipo/internal/cpu"
-	"github.com/corentin-chary/adipo/internal/format"
+	"github.com/DataDog/adipo/internal/cpu"
+	"github.com/DataDog/adipo/internal/format"
 )
 
 // Matcher checks binary compatibility with CPU capabilities

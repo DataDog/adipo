@@ -83,7 +83,7 @@ Build one Docker image for amd64 and one for arm64, but each contains a fat bina
 ### Install with Go
 
 ```bash
-go install github.com/corentin-chary/adipo/cmd/adipo@latest
+go install github.com/DataDog/adipo/cmd/adipo@latest
 ```
 
 This will install `adipo` to `$GOPATH/bin` (usually `~/go/bin`). Make sure this directory is in your `PATH`.
@@ -92,7 +92,7 @@ This will install `adipo` to `$GOPATH/bin` (usually `~/go/bin`). Make sure this 
 
 ```bash
 # Clone the repository
-git clone https://github.com/corentin-chary/adipo
+git clone https://github.com/DataDog/adipo
 cd adipo
 
 # Build

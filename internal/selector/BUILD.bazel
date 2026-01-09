@@ -7,7 +7,7 @@ go_library(
         "scorer.go",
         "selector.go",
     ],
-    importpath = "github.com/corentin-chary/adipo/internal/selector",
+    importpath = "github.com/DataDog/adipo/internal/selector",
     visibility = ["//:__subpackages__"],
     deps = [
         "//internal/cpu",

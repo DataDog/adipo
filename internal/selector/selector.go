@@ -3,8 +3,8 @@ package selector
 import (
 	"fmt"
 
-	"github.com/corentin-chary/adipo/internal/cpu"
-	"github.com/corentin-chary/adipo/internal/format"
+	"github.com/DataDog/adipo/internal/cpu"
+	"github.com/DataDog/adipo/internal/format"
 )
 
 // Selector selects the best binary for the current CPU

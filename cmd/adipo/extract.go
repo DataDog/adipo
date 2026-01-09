@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/corentin-chary/adipo/internal/compression"
-	"github.com/corentin-chary/adipo/internal/cpu"
-	"github.com/corentin-chary/adipo/internal/format"
-	"github.com/corentin-chary/adipo/internal/selector"
+	"github.com/DataDog/adipo/internal/compression"
+	"github.com/DataDog/adipo/internal/cpu"
+	"github.com/DataDog/adipo/internal/format"
+	"github.com/DataDog/adipo/internal/selector"
 	"github.com/spf13/cobra"
 )
 

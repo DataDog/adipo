@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/corentin-chary/adipo/internal/features"
+	"github.com/DataDog/adipo/internal/features"
 )
 
 // ArchSpec represents a parsed architecture specification

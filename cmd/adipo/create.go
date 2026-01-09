@@ -6,11 +6,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/corentin-chary/adipo/internal/compression"
-	"github.com/corentin-chary/adipo/internal/elf"
-	"github.com/corentin-chary/adipo/internal/format"
-	"github.com/corentin-chary/adipo/internal/macho"
-	"github.com/corentin-chary/adipo/internal/stub"
+	"github.com/DataDog/adipo/internal/compression"
+	"github.com/DataDog/adipo/internal/elf"
+	"github.com/DataDog/adipo/internal/format"
+	"github.com/DataDog/adipo/internal/macho"
+	"github.com/DataDog/adipo/internal/stub"
 	"github.com/spf13/cobra"
 )
 

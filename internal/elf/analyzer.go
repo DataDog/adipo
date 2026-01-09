@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/corentin-chary/adipo/internal/format"
+	"github.com/DataDog/adipo/internal/format"
 )
 
 // BinaryInfo contains information about an ELF binary

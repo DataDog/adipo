@@ -19,6 +19,6 @@ go_library(
     name = "stub",
     srcs = ["embed.go"],
     embedsrcs = ["stub.bin"],
-    importpath = "github.com/corentin-chary/adipo/internal/stub",
+    importpath = "github.com/DataDog/adipo/internal/stub",
     visibility = ["//:__subpackages__"],
 )

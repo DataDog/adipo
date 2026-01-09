@@ -1,7 +1,7 @@
 package cpu
 
 import (
-	"github.com/corentin-chary/adipo/internal/format"
+	"github.com/DataDog/adipo/internal/format"
 )
 
 // Capabilities represents detected CPU capabilities

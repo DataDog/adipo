@@ -9,7 +9,7 @@ go_library(
         "spec.go",
         "writer.go",
     ],
-    importpath = "github.com/corentin-chary/adipo/internal/format",
+    importpath = "github.com/DataDog/adipo/internal/format",
     visibility = ["//:__subpackages__"],
     deps = ["//internal/features"],
 )

@@ -10,7 +10,7 @@ go_library(
         "main.go",
         "run.go",
     ],
-    importpath = "github.com/corentin-chary/adipo/cmd/adipo",
+    importpath = "github.com/DataDog/adipo/cmd/adipo",
     visibility = ["//visibility:private"],
     deps = [
         "//internal/compression",
