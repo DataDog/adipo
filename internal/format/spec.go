@@ -133,10 +133,28 @@ func parseARMVersion(version string) (ArchVersion, error) {
 		return ARM64_V8_3, nil
 	case "v8.4":
 		return ARM64_V8_4, nil
+	case "v8.5":
+		return ARM64_V8_5, nil
+	case "v8.6":
+		return ARM64_V8_6, nil
+	case "v8.7":
+		return ARM64_V8_7, nil
+	case "v8.8":
+		return ARM64_V8_8, nil
+	case "v8.9":
+		return ARM64_V8_9, nil
 	case "v9.0", "v9":
 		return ARM64_V9_0, nil
 	case "v9.1":
 		return ARM64_V9_1, nil
+	case "v9.2":
+		return ARM64_V9_2, nil
+	case "v9.3":
+		return ARM64_V9_3, nil
+	case "v9.4":
+		return ARM64_V9_4, nil
+	case "v9.5":
+		return ARM64_V9_5, nil
 	default:
 		return 0, fmt.Errorf("invalid ARM64 version: %s", version)
 	}

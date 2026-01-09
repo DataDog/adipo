@@ -92,8 +92,17 @@ const (
 	ARM64_V8_2    ArchVersion = 3
 	ARM64_V8_3    ArchVersion = 4
 	ARM64_V8_4    ArchVersion = 5
+	ARM64_V8_5    ArchVersion = 8
+	ARM64_V8_6    ArchVersion = 9
+	ARM64_V8_7    ArchVersion = 10
+	ARM64_V8_8    ArchVersion = 11
+	ARM64_V8_9    ArchVersion = 12
 	ARM64_V9_0    ArchVersion = 6
 	ARM64_V9_1    ArchVersion = 7
+	ARM64_V9_2    ArchVersion = 13
+	ARM64_V9_3    ArchVersion = 14
+	ARM64_V9_4    ArchVersion = 15
+	ARM64_V9_5    ArchVersion = 16
 )
 
 func (v ArchVersion) String(arch Architecture) string {
@@ -123,10 +132,28 @@ func (v ArchVersion) String(arch Architecture) string {
 			return "v8.3"
 		case ARM64_V8_4:
 			return "v8.4"
+		case ARM64_V8_5:
+			return "v8.5"
+		case ARM64_V8_6:
+			return "v8.6"
+		case ARM64_V8_7:
+			return "v8.7"
+		case ARM64_V8_8:
+			return "v8.8"
+		case ARM64_V8_9:
+			return "v8.9"
 		case ARM64_V9_0:
 			return "v9.0"
 		case ARM64_V9_1:
 			return "v9.1"
+		case ARM64_V9_2:
+			return "v9.2"
+		case ARM64_V9_3:
+			return "v9.3"
+		case ARM64_V9_4:
+			return "v9.4"
+		case ARM64_V9_5:
+			return "v9.5"
 		default:
 			return "unknown"
 		}
