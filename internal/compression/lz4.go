@@ -33,7 +33,7 @@ func (c *LZ4Compressor) Compress(input []byte, level int) ([]byte, error) {
 	}
 
 	if _, err := writer.Write(input); err != nil {
-		writer.Close()
+		_ = writer.Close()
 		return nil, err
 	}
 

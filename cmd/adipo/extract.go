@@ -37,7 +37,9 @@ func init() {
 	extractCmd.Flags().StringVarP(&extractFlags.output, "output", "o", "", "Output file path (required)")
 	extractCmd.Flags().BoolVar(&extractFlags.all, "all", false, "Extract all binaries (output must be a directory)")
 
-	extractCmd.MarkFlagRequired("output")
+	if err := extractCmd.MarkFlagRequired("output"); err != nil {
+		panic(err)
+	}
 }
 
 func runExtract(cmd *cobra.Command, args []string) error {
@@ -48,7 +50,7 @@ func runExtract(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open fat binary: %w", err)
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	metadata := reader.Metadata()
 

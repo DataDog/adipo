@@ -23,7 +23,7 @@ func (c *ZstdCompressor) Compress(input []byte, level int) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer encoder.Close()
+	defer func() { _ = encoder.Close() }()
 
 	compressed := encoder.EncodeAll(input, make([]byte, 0, len(input)))
 	return compressed, nil

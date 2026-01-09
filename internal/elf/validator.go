@@ -24,7 +24,7 @@ func Validate(path string) error {
 	if err != nil {
 		return fmt.Errorf("not a valid ELF file: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	// Check if it's executable or shared object
 	if f.Type != elf.ET_EXEC && f.Type != elf.ET_DYN {
@@ -64,7 +64,7 @@ func ValidateArchitecture(path string, expectedMachine elf.Machine) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	if f.Machine != expectedMachine {
 		return fmt.Errorf("architecture mismatch: expected %v, got %v",

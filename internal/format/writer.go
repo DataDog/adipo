@@ -220,7 +220,7 @@ func WriteToFile(path string, stubData []byte, entries []*BinaryEntry, stubArch 
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	writer := NewWriter(file, stubData)
 	writer.SetStubArchitecture(stubArch, stubArchVer)

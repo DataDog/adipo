@@ -26,7 +26,7 @@ func (c *GzipCompressor) Compress(input []byte, level int) ([]byte, error) {
 	}
 
 	if _, err := writer.Write(input); err != nil {
-		writer.Close()
+		_ = writer.Close()
 		return nil, err
 	}
 
@@ -43,7 +43,7 @@ func (c *GzipCompressor) Decompress(input []byte, expectedSize uint64) ([]byte, 
 	if err != nil {
 		return nil, err
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	// Pre-allocate based on expected size
 	output := make([]byte, 0, expectedSize)

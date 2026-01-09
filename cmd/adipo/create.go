@@ -64,7 +64,9 @@ func init() {
 	createCmd.Flags().BoolVar(&createFlags.verify, "verify", true, "Verify binary format (ELF/Mach-O) and executability")
 	createCmd.Flags().BoolVar(&createFlags.noStub, "no-stub", false, "Create fat binary without self-extracting stub (saves space, requires extraction tool)")
 
-	createCmd.MarkFlagRequired("output")
+	if err := createCmd.MarkFlagRequired("output"); err != nil {
+		panic(err)
+	}
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
@@ -321,14 +323,16 @@ func detectStubArchitecture(stubData []byte) (format.Architecture, format.ArchVe
 	if err != nil {
 		return format.ArchUnknown, 0, fmt.Errorf("failed to create temp file: %w", err)
 	}
-	defer os.Remove(tmpFile.Name())
-	defer tmpFile.Close()
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
+	defer func() { _ = tmpFile.Close() }()
 
 	if _, err := tmpFile.Write(stubData); err != nil {
 		return format.ArchUnknown, 0, fmt.Errorf("failed to write temp file: %w", err)
 	}
 
-	tmpFile.Close()
+	if err := tmpFile.Close(); err != nil {
+		return format.ArchUnknown, 0, fmt.Errorf("failed to close temp file: %w", err)
+	}
 
 	// Detect format
 	binaryFormat, err := format.DetectFormat(tmpFile.Name())

@@ -30,7 +30,7 @@ func (d *DiskExtractor) Extract(data []byte, name string) (string, func(), error
 	tempFile := filepath.Join(extractDir, name)
 	file, err := os.OpenFile(tempFile, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0700)
 	if err != nil {
-		os.RemoveAll(extractDir)
+		_ = os.RemoveAll(extractDir)
 		return "", nil, fmt.Errorf("failed to create temp file: %w", err)
 	}
 
@@ -39,27 +39,27 @@ func (d *DiskExtractor) Extract(data []byte, name string) (string, func(), error
 	// Write binary data
 	_, err = file.Write(data)
 	if err != nil {
-		file.Close()
-		os.RemoveAll(extractDir)
+		_ = file.Close()
+		_ = os.RemoveAll(extractDir)
 		return "", nil, fmt.Errorf("failed to write to temp file: %w", err)
 	}
 
 	// Close file (we'll reopen for execution)
 	if err := file.Close(); err != nil {
-		os.RemoveAll(extractDir)
+		_ = os.RemoveAll(extractDir)
 		return "", nil, fmt.Errorf("failed to close temp file: %w", err)
 	}
 
 	// Ensure executable permissions
 	if err := os.Chmod(tempFile, 0755); err != nil {
-		os.RemoveAll(extractDir)
+		_ = os.RemoveAll(extractDir)
 		return "", nil, fmt.Errorf("failed to chmod temp file: %w", err)
 	}
 
 	// Cleanup function
 	cleanup := func() {
 		// Remove the entire extract directory
-		os.RemoveAll(extractDir)
+		_ = os.RemoveAll(extractDir)
 	}
 
 	return tempFile, cleanup, nil

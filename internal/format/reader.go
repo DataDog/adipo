@@ -128,11 +128,7 @@ func (r *Reader) validateMagicMarker(offset int64) bool {
 
 	// Check StubSize matches offset
 	stubSize := binary.LittleEndian.Uint64(buf[StubSizeOffset:StubSizeOffset+StubSizeSize])
-	if int64(stubSize) != offset {
-		return false
-	}
-
-	return true
+	return int64(stubSize) == offset
 }
 
 // findMagicMarker searches for the magic marker in the file
@@ -354,7 +350,7 @@ func OpenFile(path string) (*Reader, error) {
 
 	reader, err := NewReader(file)
 	if err != nil {
-		file.Close()
+		_ = file.Close()
 		return nil, err
 	}
 

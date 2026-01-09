@@ -26,7 +26,7 @@ func Analyze(path string) (*BinaryInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open Mach-O file: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	info := &BinaryInfo{
 		Path:         path,

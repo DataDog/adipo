@@ -42,7 +42,7 @@ func runInspect(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open fat binary: %w", err)
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	header := reader.Header()
 	metadata := reader.Metadata()
@@ -104,8 +104,8 @@ func outputTable(path string, header *format.FormatHeader, metadata []*format.Bi
 
 	// Create table
 	table := tablewriter.NewWriter(os.Stdout)
-	table.Append([]string{"Index", "Architecture", "Version", "Features", "Original", "Compressed", "Ratio"})
-	table.Append([]string{"-----", "------------", "-------", "--------", "--------", "----------", "-----"})
+	_ = table.Append([]string{"Index", "Architecture", "Version", "Features", "Original", "Compressed", "Ratio"})
+	_ = table.Append([]string{"-----", "------------", "-------", "--------", "--------", "----------", "-----"})
 
 	for i, meta := range metadata {
 		archStr := meta.Architecture.String()
@@ -115,9 +115,10 @@ func outputTable(path string, header *format.FormatHeader, metadata []*format.Bi
 		var featuresStr string
 		if inspectFlags.features {
 			var featureNames []string
-			if meta.Architecture == format.ArchX86_64 {
+			switch meta.Architecture {
+			case format.ArchX86_64:
 				featureNames = cpu.FormatX86Features(meta.RequiredFeatures)
-			} else if meta.Architecture == format.ArchARM64 {
+			case format.ArchARM64:
 				featureNames = cpu.FormatARMFeatures(meta.RequiredFeatures)
 			}
 			if len(featureNames) > 0 {
@@ -143,7 +144,7 @@ func outputTable(path string, header *format.FormatHeader, metadata []*format.Bi
 			indexStr = fmt.Sprintf("%d *", i)
 		}
 
-		table.Append([]string{
+		_ = table.Append([]string{
 			indexStr,
 			archStr,
 			versionStr,
@@ -154,7 +155,7 @@ func outputTable(path string, header *format.FormatHeader, metadata []*format.Bi
 		})
 	}
 
-	table.Render()
+	_ = table.Render()
 
 	// Show preferred binary information
 	if preferredIndex >= 0 {
@@ -213,9 +214,10 @@ func formatMetadataForJSON(metadata []*format.BinaryMetadata) []map[string]inter
 
 	for i, meta := range metadata {
 		var features []string
-		if meta.Architecture == format.ArchX86_64 {
+		switch meta.Architecture {
+		case format.ArchX86_64:
 			features = cpu.FormatX86Features(meta.RequiredFeatures)
-		} else if meta.Architecture == format.ArchARM64 {
+		case format.ArchARM64:
 			features = cpu.FormatARMFeatures(meta.RequiredFeatures)
 		}
 

@@ -85,9 +85,8 @@ func DetectARM64() (*Capabilities, error) {
 	}
 
 	// Additional features from /proc/cpuinfo
-	if err := detectFromCPUInfo(caps, &featureMask); err != nil {
-		// Non-fatal, continue with what we have
-	}
+	// Non-fatal, continue with what we have
+	_ = detectFromCPUInfo(caps, &featureMask)
 
 	caps.FeatureMask = featureMask
 
@@ -103,7 +102,7 @@ func detectFromCPUInfo(caps *Capabilities, featureMask *uint64) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {

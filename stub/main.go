@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/corentin-chary/adipo/internal/compression"
@@ -33,7 +32,7 @@ func main() {
 	if err != nil {
 		fatal("failed to open self: %v", err)
 	}
-	defer self.Close()
+	defer func() { _ = self.Close() }()
 
 	// Parse the fat binary format
 	if verbose {
@@ -172,9 +171,4 @@ func main() {
 func fatal(format string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, "adipo stub: "+format+"\n", args...)
 	os.Exit(1)
-}
-
-// Helper function to read all data from a reader
-func readAll(r io.Reader) ([]byte, error) {
-	return io.ReadAll(r)
 }

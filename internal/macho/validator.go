@@ -24,7 +24,7 @@ func Validate(path string) error {
 	if err != nil {
 		return fmt.Errorf("not a valid Mach-O file: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	// Check if it's executable
 	if f.Type != macho.TypeExec {
@@ -64,7 +64,7 @@ func ValidateArchitecture(path string, expectedCpu macho.Cpu) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	if f.Cpu != expectedCpu {
 		return fmt.Errorf("architecture mismatch: expected %v, got %v",
