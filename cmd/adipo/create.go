@@ -139,6 +139,13 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		entries = append(entries, entry)
 	}
 
+	// Validate stub compatibility with binaries
+	if !createFlags.noStub {
+		if err := validateStubCompatibility(stubArch, stubData, entries); err != nil {
+			return fmt.Errorf("stub compatibility check failed: %w", err)
+		}
+	}
+
 	// Create the fat binary
 	fmt.Printf("\nWriting fat binary to: %s\n", createFlags.output)
 
@@ -359,4 +366,90 @@ func detectStubArchitecture(stubData []byte) (format.Architecture, format.ArchVe
 	default:
 		return format.ArchUnknown, 0, fmt.Errorf("unsupported stub format: %s", binaryFormat.String())
 	}
+}
+
+// validateStubCompatibility validates that the stub is compatible with at least one binary
+func validateStubCompatibility(stubArch format.Architecture, stubData []byte, entries []*format.BinaryEntry) error {
+	// Detect stub format
+	tmpFile, err := os.CreateTemp("", "adipo-stub-validate-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
+	}
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
+	defer func() { _ = tmpFile.Close() }()
+
+	if _, err := tmpFile.Write(stubData); err != nil {
+		return fmt.Errorf("failed to write temp file: %w", err)
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("failed to close temp file: %w", err)
+	}
+
+	stubFormat, err := format.DetectFormat(tmpFile.Name())
+	if err != nil {
+		return fmt.Errorf("failed to detect stub format: %w", err)
+	}
+
+	// Check if stub architecture matches at least one binary
+	var hasArchMatch bool
+	var hasFormatMatch bool
+	var foundArchs []string
+	var foundFormats []string
+
+	for _, entry := range entries {
+		archStr := entry.Metadata.Architecture.String()
+		formatStr := entry.Metadata.Format.String()
+
+		// Track what we found for error reporting
+		var alreadyTracked bool
+		for _, a := range foundArchs {
+			if a == archStr {
+				alreadyTracked = true
+				break
+			}
+		}
+		if !alreadyTracked {
+			foundArchs = append(foundArchs, archStr)
+		}
+
+		alreadyTracked = false
+		for _, f := range foundFormats {
+			if f == formatStr {
+				alreadyTracked = true
+				break
+			}
+		}
+		if !alreadyTracked {
+			foundFormats = append(foundFormats, formatStr)
+		}
+
+		// Check architecture match
+		if entry.Metadata.Architecture == stubArch {
+			hasArchMatch = true
+		}
+
+		// Check format match
+		if entry.Metadata.Format == stubFormat {
+			hasFormatMatch = true
+		}
+	}
+
+	// Report errors
+	if !hasArchMatch {
+		return fmt.Errorf("stub architecture %s does not match any binary (found: %v). "+
+			"The stub cannot run on the target systems. "+
+			"Please rebuild the stub for one of the target architectures or use binaries that match the stub architecture",
+			stubArch.String(), foundArchs)
+	}
+
+	if !hasFormatMatch {
+		return fmt.Errorf("stub format %s does not match any binary format (found: %v). "+
+			"The stub cannot run on the target operating systems. "+
+			"For example, ELF stubs run on Linux, Mach-O stubs run on macOS. "+
+			"Please rebuild the stub for the target OS or use binaries that match the stub format",
+			stubFormat.String(), foundFormats)
+	}
+
+	return nil
 }

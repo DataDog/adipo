@@ -26,13 +26,14 @@ help:
 	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' | sed -e 's/^/ /'
 
 ## build: Build the adipo binary (builds stub first)
-build: stub
-	@echo "Building adipo..."
+build:
+	@echo "Building adipo with stub for current host..."
+	go generate ./internal/stub
 	go build $(MAINFLAGS) -o $(MAIN_BIN) ./cmd/adipo
 
-## stub: Build the self-extracting stub binary
+## stub: Build the self-extracting stub binary for current host
 stub:
-	@echo "Building stub binary..."
+	@echo "Building stub binary for current host..."
 	go build $(STUBFLAGS) -o $(STUB_BIN) ./stub
 
 ## clean: Remove built binaries
@@ -53,8 +54,9 @@ test-coverage:
 	@echo "Coverage report: coverage.html"
 
 ## install: Install adipo to GOPATH/bin
-install: build
-	@echo "Installing adipo..."
+install:
+	@echo "Installing adipo (with stub for current host)..."
+	go generate ./internal/stub
 	go install $(MAINFLAGS) ./cmd/adipo
 
 ## lint: Run golangci-lint
@@ -82,73 +84,97 @@ mod-tidy:
 	@echo "Tidying go.mod..."
 	go mod tidy
 
-## build-all-arch: Build for multiple architectures
-build-all-arch: stub-all-arch
+## build-all-arch: Build for multiple OS/arch combinations (each with correct stub)
+build-all-arch:
 	@echo "Building for multiple architectures..."
-	GOOS=linux GOARCH=amd64 go build $(MAINFLAGS) -o $(MAIN_BIN)-linux-amd64 ./cmd/adipo
-	GOOS=linux GOARCH=arm64 go build $(MAINFLAGS) -o $(MAIN_BIN)-linux-arm64 ./cmd/adipo
-	@echo "Built: $(MAIN_BIN)-linux-amd64, $(MAIN_BIN)-linux-arm64"
+	@echo "Building linux/amd64..."
+	@GOOS=linux GOARCH=amd64 go build $(STUBFLAGS) -o $(STUB_BIN) ./stub
+	@GOOS=linux GOARCH=amd64 go build $(MAINFLAGS) -o $(MAIN_BIN)-linux-amd64 ./cmd/adipo
+	@echo "Building linux/arm64..."
+	@GOOS=linux GOARCH=arm64 go build $(STUBFLAGS) -o $(STUB_BIN) ./stub
+	@GOOS=linux GOARCH=arm64 go build $(MAINFLAGS) -o $(MAIN_BIN)-linux-arm64 ./cmd/adipo
+	@echo "Building darwin/amd64..."
+	@GOOS=darwin GOARCH=amd64 go build $(STUBFLAGS) -o $(STUB_BIN) ./stub
+	@GOOS=darwin GOARCH=amd64 go build $(MAINFLAGS) -o $(MAIN_BIN)-darwin-amd64 ./cmd/adipo
+	@echo "Building darwin/arm64..."
+	@GOOS=darwin GOARCH=arm64 go build $(STUBFLAGS) -o $(STUB_BIN) ./stub
+	@GOOS=darwin GOARCH=arm64 go build $(MAINFLAGS) -o $(MAIN_BIN)-darwin-arm64 ./cmd/adipo
+	@rm -f $(STUB_BIN)
+	@echo "Built: $(MAIN_BIN)-{linux,darwin}-{amd64,arm64}"
 
-## stub-all-arch: Build stub for multiple architectures
+## stub-all-arch: Build stub for multiple architectures (for distribution)
 stub-all-arch:
 	@echo "Building stub for multiple architectures..."
 	@mkdir -p build/stub
-	GOOS=linux GOARCH=amd64 go build $(STUBFLAGS) -o build/stub/stub-linux-amd64 ./stub
-	GOOS=linux GOARCH=arm64 go build $(STUBFLAGS) -o build/stub/stub-linux-arm64 ./stub
-	@echo "Built: build/stub/stub-linux-amd64, build/stub/stub-linux-arm64"
+	@GOOS=linux GOARCH=amd64 go build $(STUBFLAGS) -o build/stub/stub-linux-amd64 ./stub
+	@GOOS=linux GOARCH=arm64 go build $(STUBFLAGS) -o build/stub/stub-linux-arm64 ./stub
+	@GOOS=darwin GOARCH=amd64 go build $(STUBFLAGS) -o build/stub/stub-darwin-amd64 ./stub
+	@GOOS=darwin GOARCH=arm64 go build $(STUBFLAGS) -o build/stub/stub-darwin-arm64 ./stub
+	@echo "Built stubs in build/stub/"
 
-## integration-test-linux: Build and run integration test on Linux
-integration-test-linux: build
-	@echo "Running Linux integration test..."
-	@echo "Building test binaries with different GOAMD64 levels..."
+## integration-test-linux: Build and run integration test for Linux binaries
+integration-test-linux:
+	@$(MAKE) integration-test-impl \
+		TEST_NAME="Linux" \
+		TEST_GOOS=linux \
+		TEST_GOARCH=amd64 \
+		TEST_ARCH_VAR=GOAMD64 \
+		TEST_BINARIES="v1:x86-64-v1 v2:x86-64-v2 v3:x86-64-v3 v4:x86-64-v4" \
+		NATIVE_OS=Linux \
+		NATIVE_ARCH=x86_64
+
+## integration-test-macos: Build and run integration test for macOS binaries (requires Go 1.23+)
+integration-test-macos:
+	@$(MAKE) integration-test-impl \
+		TEST_NAME="macOS" \
+		TEST_GOOS=darwin \
+		TEST_GOARCH=arm64 \
+		TEST_ARCH_VAR=GOARM64 \
+		TEST_BINARIES="v8.0:aarch64-v8.0 v8.1:aarch64-v8.1 v8.2:aarch64-v8.2 v9.0:aarch64-v9.0" \
+		NATIVE_OS=Darwin \
+		NATIVE_ARCH=arm64
+
+# Internal target for integration tests (don't call directly)
+integration-test-impl:
+	@echo "Running $(TEST_NAME) integration test..."
+	@echo "Building adipo for host platform..."
+	@go generate ./internal/stub
+	@go build $(MAINFLAGS) -o $(MAIN_BIN) ./cmd/adipo
+	@echo "Building test binaries..."
 	@mkdir -p test/bin
 	@echo 'package main\nimport "fmt"\nfunc main() { fmt.Println("Hello from test binary!") }' > test/bin/hello.go
-	GOAMD64=v1 go build -o test/bin/hello-v1 test/bin/hello.go
-	GOAMD64=v2 go build -o test/bin/hello-v2 test/bin/hello.go
-	GOAMD64=v3 go build -o test/bin/hello-v3 test/bin/hello.go
-	GOAMD64=v4 go build -o test/bin/hello-v4 test/bin/hello.go
-	@echo "Creating fat binary with 4 x86-64 variants..."
-	./$(MAIN_BIN) create -o test/bin/hello.fat \
-		--binary test/bin/hello-v1:x86-64-v1 \
-		--binary test/bin/hello-v2:x86-64-v2 \
-		--binary test/bin/hello-v3:x86-64-v3 \
-		--binary test/bin/hello-v4:x86-64-v4
-	@echo "Inspecting fat binary..."
-	./$(MAIN_BIN) inspect test/bin/hello.fat
-	@echo "Running fat binary via adipo run..."
-	./$(MAIN_BIN) run test/bin/hello.fat
-	@echo "Executing fat binary directly..."
-	./test/bin/hello.fat
+	@for spec in $(TEST_BINARIES); do \
+		level=$${spec%%:*}; \
+		GOOS=$(TEST_GOOS) GOARCH=$(TEST_GOARCH) $(TEST_ARCH_VAR)=$$level go build -o test/bin/hello-$$level test/bin/hello.go; \
+	done
+	@if [ "$$(uname -s)" = "$(NATIVE_OS)" ] && [ "$$(uname -m)" = "$(NATIVE_ARCH)" ]; then \
+		echo "Creating fat binary with stub (native platform)..."; \
+		binary_args=""; \
+		for spec in $(TEST_BINARIES); do \
+			level=$${spec%%:*}; archspec=$${spec#*:}; \
+			binary_args="$$binary_args --binary test/bin/hello-$$level:$$archspec"; \
+		done; \
+		./$(MAIN_BIN) create -o test/bin/hello.fat $$binary_args; \
+		echo "Inspecting fat binary..."; \
+		./$(MAIN_BIN) inspect test/bin/hello.fat; \
+		echo "Running fat binary..."; \
+		./$(MAIN_BIN) run test/bin/hello.fat; \
+		./test/bin/hello.fat; \
+	else \
+		echo "Cross-platform test: creating fat binary without stub..."; \
+		binary_args=""; \
+		for spec in $(TEST_BINARIES); do \
+			level=$${spec%%:*}; archspec=$${spec#*:}; \
+			binary_args="$$binary_args --binary test/bin/hello-$$level:$$archspec"; \
+		done; \
+		./$(MAIN_BIN) create --no-stub -o test/bin/hello.fat $$binary_args; \
+		echo "Inspecting fat binary..."; \
+		./$(MAIN_BIN) inspect test/bin/hello.fat; \
+		echo "Skipping execution tests (not on native platform)"; \
+	fi
 	@echo "Extracting binary..."
-	./$(MAIN_BIN) extract -t 0 -o test/bin/hello-extracted test/bin/hello.fat
-	@echo "Linux integration test passed!"
-	@rm -rf test/bin
-
-## integration-test-macos: Build and run integration test on macOS (requires Go 1.23+)
-integration-test-macos: build
-	@echo "Running macOS integration test..."
-	@echo "Building test binaries with different GOARM64 levels (requires Go 1.23+)..."
-	@mkdir -p test/bin
-	@echo 'package main\nimport "fmt"\nfunc main() { fmt.Println("Hello from test binary!") }' > test/bin/hello.go
-	GOARM64=v8.0 go build -o test/bin/hello-v80 test/bin/hello.go
-	GOARM64=v8.1 go build -o test/bin/hello-v81 test/bin/hello.go
-	GOARM64=v8.2 go build -o test/bin/hello-v82 test/bin/hello.go
-	GOARM64=v9.0 go build -o test/bin/hello-v90 test/bin/hello.go
-	@echo "Creating fat binary with 4 ARM64 variants..."
-	./$(MAIN_BIN) create -o test/bin/hello.fat \
-		--binary test/bin/hello-v80:aarch64-v8.0 \
-		--binary test/bin/hello-v81:aarch64-v8.1 \
-		--binary test/bin/hello-v82:aarch64-v8.2 \
-		--binary test/bin/hello-v90:aarch64-v9.0
-	@echo "Inspecting fat binary..."
-	./$(MAIN_BIN) inspect test/bin/hello.fat
-	@echo "Running fat binary via adipo run..."
-	./$(MAIN_BIN) run test/bin/hello.fat
-	@echo "Executing fat binary directly..."
-	./test/bin/hello.fat
-	@echo "Extracting binary..."
-	./$(MAIN_BIN) extract -t 0 -o test/bin/hello-extracted test/bin/hello.fat
-	@echo "macOS integration test passed!"
+	@./$(MAIN_BIN) extract -t 0 -o test/bin/hello-extracted test/bin/hello.fat
+	@echo "$(TEST_NAME) integration test passed!"
 	@rm -rf test/bin
 
 ## check: Run all checks (fmt, vet, lint, test)
