@@ -37,13 +37,13 @@ jobs:
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Build binary
+      - name: Build binary and stub
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: |
-          # Build the binary
+          # Build the main binary with embedded stub
           make build
 
           # Set binary name based on platform
@@ -51,6 +51,10 @@ jobs:
           if [ "$GOOS" = "windows" ]; then
             BINARY_NAME="adipo.exe"
           fi
+
+          # Build standalone stub for this platform
+          STUB_NAME="adipo-stub-${GOOS}-${GOARCH}"
+          go build -trimpath -ldflags='-s -w' -o "${STUB_NAME}" ./stub
 
           # Create release directory
           mkdir -p release
@@ -67,9 +71,13 @@ jobs:
             tar czf "release/${ARCHIVE_NAME}.tar.gz" ${BINARY_NAME}
           fi
 
+          # Copy standalone stub to release directory
+          cp "${STUB_NAME}" release/
+
           # Generate checksums
           cd release
           sha256sum ${ARCHIVE_NAME}.* > ${ARCHIVE_NAME}.sha256
+          sha256sum ${STUB_NAME} > ${STUB_NAME}.sha256
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -103,9 +111,9 @@ jobs:
           VERSION=${GITHUB_REF#refs/tags/}
 
           cat > release_notes.md << EOF
-          ## adipo ${VERSION}
+          ## Installation
 
-          ### Installation
+          ### Using Pre-built Binaries
 
           Download the appropriate archive for your platform:
 
@@ -137,16 +145,31 @@ jobs:
           sudo mv adipo /usr/local/bin/
           \`\`\`
 
+          ### Using go install
+
+          \`\`\`bash
+          go install github.com/DataDog/adipo/cmd/adipo@${VERSION}
+          \`\`\`
+
+          **Note:** When using \`go install\`, you'll need to download a stub binary for your platform to create fat binaries:
+
+          \`\`\`bash
+          # Download stub for your platform
+          curl -LO https://github.com/${GITHUB_REPOSITORY}/releases/download/${VERSION}/adipo-stub-linux-amd64
+
+          # Use it when creating fat binaries
+          adipo create --stub-path ./adipo-stub-linux-amd64 -o app.fat app1 app2
+          \`\`\`
+
+          Available stub binaries: \`adipo-stub-{linux,darwin}-{amd64,arm64}\`
+
           ### Verifying Downloads
 
           Verify the integrity of your download using SHA256 checksums:
           \`\`\`bash
           sha256sum -c adipo-${VERSION}-<os>-<arch>.sha256
+          sha256sum -c adipo-stub-<os>-<arch>.sha256
           \`\`\`
-
-          ### What's Changed
-
-          See commit history for detailed changes.
           EOF
 
           echo "RELEASE_NOTES_FILE=release_notes.md" >> $GITHUB_OUTPUT
@@ -157,8 +180,9 @@ jobs:
         run: |
           VERSION=${GITHUB_REF#refs/tags/}
 
-          # Create the release with notes
+          # Create the release with custom notes and auto-generated changelog
           gh release create "${VERSION}" \
             --title "adipo ${VERSION}" \
             --notes-file "${{ steps.release_notes.outputs.RELEASE_NOTES_FILE }}" \
+            --generate-notes \
             release/*
