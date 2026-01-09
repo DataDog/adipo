@@ -12,15 +12,16 @@ import (
 )
 
 func main() {
-	// Check environment variables for configuration
-	verbose := os.Getenv("ADIPO_VERBOSE") == "1" || os.Getenv("ADIPO_DEBUG") == "1"
-	debug := os.Getenv("ADIPO_DEBUG") == "1"
-	preferDisk := os.Getenv("ADIPO_PREFER_DISK") == "1"
+	// Check environment variables for configuration (these override header defaults)
+	envVerbose := os.Getenv("ADIPO_VERBOSE")
+	envDebug := os.Getenv("ADIPO_DEBUG")
+	envPreferDisk := os.Getenv("ADIPO_PREFER_DISK")
+	envExtractDir := os.Getenv("ADIPO_EXTRACT_DIR")
+	envCleanupOnExit := os.Getenv("ADIPO_CLEANUP_ON_EXIT")
 	forceSpec := os.Getenv("ADIPO_FORCE")
 
-	if verbose {
-		fmt.Fprintf(os.Stderr, "adipo stub: starting execution\n")
-	}
+	// Default debug setting (env var only)
+	debug := envDebug == "1"
 
 	// Open ourselves - use os.Executable for cross-platform support
 	exePath, err := os.Executable()
@@ -35,10 +36,6 @@ func main() {
 	defer func() { _ = self.Close() }()
 
 	// Parse the fat binary format
-	if verbose {
-		fmt.Fprintf(os.Stderr, "adipo stub: parsing fat binary format\n")
-	}
-
 	reader, err := format.NewReader(self)
 	if err != nil {
 		fatal("failed to parse fat binary: %v", err)
@@ -46,6 +43,38 @@ func main() {
 
 	header := reader.Header()
 	metadata := reader.Metadata()
+
+	// Read stub settings from header and merge with environment variables
+	stubSettings := header.GetStubSettings()
+	defaultExtractDir := header.GetDefaultExtractDir()
+
+	// Determine effective settings (env vars override header defaults)
+	verbose := false
+	if envVerbose != "" {
+		verbose = envVerbose == "1"
+	} else {
+		verbose = (stubSettings & format.StubSettingVerbose) != 0
+	}
+	if envDebug == "1" {
+		verbose = true // debug implies verbose
+	}
+
+	preferDisk := false
+	if envPreferDisk != "" {
+		preferDisk = envPreferDisk == "1"
+	}
+
+	extractDir := envExtractDir
+	if extractDir == "" {
+		extractDir = defaultExtractDir
+	}
+
+	cleanupOnExit := true
+	if envCleanupOnExit != "" {
+		cleanupOnExit = envCleanupOnExit == "1"
+	} else {
+		cleanupOnExit = (stubSettings & format.StubSettingCleanupOnExit) != 0
+	}
 
 	if verbose {
 		fmt.Fprintf(os.Stderr, "adipo stub: found %d binaries\n", header.NumBinaries)
@@ -149,10 +178,12 @@ func main() {
 
 	// Extract and execute
 	opts := &extractor.ExecutionOptions{
-		Args:         os.Args[1:], // Pass through arguments (skip argv[0])
-		Env:          extractor.GetEnvironment(),
-		PreferMemory: !preferDisk,
-		Verbose:      verbose,
+		Args:          os.Args[1:], // Pass through arguments (skip argv[0])
+		Env:           extractor.GetEnvironment(),
+		PreferMemory:  !preferDisk,
+		Verbose:       verbose,
+		TempDir:       extractDir,
+		CleanupOnExit: cleanupOnExit,
 	}
 
 	if verbose {

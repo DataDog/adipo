@@ -3,7 +3,31 @@ package extractor
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 )
+
+// expandTilde expands ~ to the user's home directory
+func expandTilde(path string) string {
+	if path == "" {
+		return path
+	}
+	if path == "~" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return path
+		}
+		return home
+	}
+	if strings.HasPrefix(path, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return path
+		}
+		return filepath.Join(home, path[2:])
+	}
+	return path
+}
 
 // Extractor is the interface for binary extraction strategies
 type Extractor interface {
@@ -21,6 +45,7 @@ type ExecutionOptions struct {
 	PreferMemory    bool              // Prefer memory extraction over disk
 	TempDir         string            // Custom temp directory (for disk extraction)
 	Verbose         bool              // Verbose output
+	CleanupOnExit   bool              // Clean up extracted file after execution
 }
 
 // DefaultExecutionOptions returns default execution options
@@ -40,15 +65,18 @@ func ExtractAndExecute(data []byte, name string, opts *ExecutionOptions) error {
 		opts = DefaultExecutionOptions()
 	}
 
+	// Expand tilde in TempDir
+	tempDir := expandTilde(opts.TempDir)
+
 	var extractor Extractor
 	var fallback Extractor
 
 	// Choose extraction strategy
 	if opts.PreferMemory {
 		extractor = &MemoryExtractor{}
-		fallback = &DiskExtractor{TempDir: opts.TempDir}
+		fallback = &DiskExtractor{TempDir: tempDir}
 	} else {
-		extractor = &DiskExtractor{TempDir: opts.TempDir}
+		extractor = &DiskExtractor{TempDir: tempDir}
 	}
 
 	// Try primary extraction method
@@ -70,8 +98,8 @@ func ExtractAndExecute(data []byte, name string, opts *ExecutionOptions) error {
 		}
 	}
 
-	// Ensure cleanup happens
-	if cleanup != nil {
+	// Conditionally cleanup based on options
+	if cleanup != nil && opts.CleanupOnExit {
 		defer cleanup()
 	}
 

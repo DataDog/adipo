@@ -13,10 +13,12 @@ import (
 )
 
 var runFlags struct {
-	force       string
-	verbose     bool
-	dryRun      bool
-	preferDisk  bool
+	force          string
+	verbose        *bool
+	dryRun         bool
+	preferDisk     bool
+	extractDir     string
+	cleanupOnExit  *bool
 }
 
 var runCmd = &cobra.Command{
@@ -34,9 +36,13 @@ This command is useful for debugging or forcing a specific binary version.`,
 
 func init() {
 	runCmd.Flags().StringVar(&runFlags.force, "force", "", "Force specific architecture (e.g., x86-64-v2)")
-	runCmd.Flags().BoolVarP(&runFlags.verbose, "verbose", "v", false, "Verbose output")
+	verboseFlag := runCmd.Flags().BoolP("verbose", "v", false, "Verbose output (overrides header default)")
+	runFlags.verbose = verboseFlag
 	runCmd.Flags().BoolVar(&runFlags.dryRun, "dry-run", false, "Show what would be executed without running")
 	runCmd.Flags().BoolVar(&runFlags.preferDisk, "prefer-disk", false, "Prefer disk extraction over memory")
+	runCmd.Flags().StringVar(&runFlags.extractDir, "extract-dir", "", "Extraction directory (overrides header default, supports ~)")
+	cleanupFlag := runCmd.Flags().Bool("cleanup-on-exit", true, "Clean up extracted binary after execution (overrides header default)")
+	runFlags.cleanupOnExit = cleanupFlag
 }
 
 func runRun(cmd *cobra.Command, args []string) error {
@@ -52,14 +58,39 @@ func runRun(cmd *cobra.Command, args []string) error {
 
 	metadata := reader.Metadata()
 
-	if runFlags.verbose {
+	// Get header settings and merge with CLI flags
+	header := reader.Header()
+	stubSettings := header.GetStubSettings()
+	defaultExtractDir := header.GetDefaultExtractDir()
+
+	// Determine effective settings (CLI overrides header defaults)
+	verbose := false
+	if cmd.Flags().Changed("verbose") {
+		verbose = *runFlags.verbose
+	} else {
+		verbose = (stubSettings & format.StubSettingVerbose) != 0
+	}
+
+	cleanupOnExit := true
+	if cmd.Flags().Changed("cleanup-on-exit") {
+		cleanupOnExit = *runFlags.cleanupOnExit
+	} else {
+		cleanupOnExit = (stubSettings & format.StubSettingCleanupOnExit) != 0
+	}
+
+	extractDir := runFlags.extractDir
+	if extractDir == "" {
+		extractDir = defaultExtractDir
+	}
+
+	if verbose {
 		fmt.Fprintf(os.Stderr, "Found %d binaries in fat binary\n", len(metadata))
 	}
 
 	// Detect CPU (or use forced spec)
 	var caps *cpu.Capabilities
 	if runFlags.force != "" {
-		if runFlags.verbose {
+		if verbose {
 			fmt.Fprintf(os.Stderr, "Forced specification: %s\n", runFlags.force)
 		}
 		// TODO: Parse forced spec and create custom capabilities
@@ -74,7 +105,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to detect CPU: %w", err)
 		}
 
-		if runFlags.verbose {
+		if verbose {
 			fmt.Fprintf(os.Stderr, "Detected CPU: %s\n", caps.String())
 		}
 	}
@@ -86,7 +117,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no compatible binary found: %w", err)
 	}
 
-	if runFlags.verbose {
+	if verbose {
 		fmt.Fprintf(os.Stderr, "Selected binary %d: %s-%s (score: %d)\n",
 			result.SelectedIndex,
 			result.SelectedBinary.Architecture.String(),
@@ -107,7 +138,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 	}
 
 	// Read and decompress the binary
-	if runFlags.verbose {
+	if verbose {
 		fmt.Fprintf(os.Stderr, "Reading binary data...\n")
 	}
 
@@ -116,7 +147,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to read binary data: %w", err)
 	}
 
-	if runFlags.verbose {
+	if verbose {
 		fmt.Fprintf(os.Stderr, "Decompressing (%s)...\n", result.SelectedBinary.Compression.String())
 	}
 
@@ -131,13 +162,15 @@ func runRun(cmd *cobra.Command, args []string) error {
 
 	// Execute
 	opts := &extractor.ExecutionOptions{
-		Args:         binaryArgs,
-		Env:          extractor.GetEnvironment(),
-		PreferMemory: !runFlags.preferDisk,
-		Verbose:      runFlags.verbose,
+		Args:          binaryArgs,
+		Env:           extractor.GetEnvironment(),
+		PreferMemory:  !runFlags.preferDisk,
+		Verbose:       verbose,
+		TempDir:       extractDir,
+		CleanupOnExit: cleanupOnExit,
 	}
 
-	if runFlags.verbose {
+	if verbose {
 		fmt.Fprintf(os.Stderr, "Executing binary...\n")
 	}
 

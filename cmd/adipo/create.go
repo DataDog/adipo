@@ -15,12 +15,15 @@ import (
 )
 
 var createFlags struct {
-	output          string
-	binaries        []string
-	compress        string
-	level           int
-	verify          bool
-	noStub          bool
+	output               string
+	binaries             []string
+	compress             string
+	level                int
+	verify               bool
+	noStub               bool
+	defaultExtractDir    string
+	defaultCleanupOnExit bool
+	defaultVerbose       bool
 }
 
 var createCmd = &cobra.Command{
@@ -63,6 +66,9 @@ func init() {
 	createCmd.Flags().IntVar(&createFlags.level, "level", 3, "Compression level")
 	createCmd.Flags().BoolVar(&createFlags.verify, "verify", true, "Verify binary format (ELF/Mach-O) and executability")
 	createCmd.Flags().BoolVar(&createFlags.noStub, "no-stub", false, "Create fat binary without self-extracting stub (saves space, requires extraction tool)")
+	createCmd.Flags().StringVar(&createFlags.defaultExtractDir, "default-extract-dir", "", "Default extraction directory for stub/run (supports ~ for home directory)")
+	createCmd.Flags().BoolVar(&createFlags.defaultCleanupOnExit, "default-cleanup-on-exit", true, "Default: clean up extracted binary after execution")
+	createCmd.Flags().BoolVar(&createFlags.defaultVerbose, "default-verbose", false, "Default: show verbose output (CPU detection, selection, extraction)")
 
 	if err := createCmd.MarkFlagRequired("output"); err != nil {
 		panic(err)
@@ -146,10 +152,19 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Build stub settings
+	var stubSettings format.StubSettings
+	if createFlags.defaultVerbose {
+		stubSettings |= format.StubSettingVerbose
+	}
+	if createFlags.defaultCleanupOnExit {
+		stubSettings |= format.StubSettingCleanupOnExit
+	}
+
 	// Create the fat binary
 	fmt.Printf("\nWriting fat binary to: %s\n", createFlags.output)
 
-	err = format.WriteToFile(createFlags.output, stubData, entries, stubArch, stubArchVer)
+	err = format.WriteToFile(createFlags.output, stubData, entries, stubArch, stubArchVer, stubSettings, createFlags.defaultExtractDir)
 	if err != nil {
 		return fmt.Errorf("failed to write fat binary: %w", err)
 	}

@@ -48,6 +48,16 @@ func (w *Writer) SetStubArchitecture(arch Architecture, version ArchVersion) {
 	w.header.StubArchVersion = version
 }
 
+// SetStubSettings sets the stub execution settings
+func (w *Writer) SetStubSettings(settings StubSettings) {
+	w.header.SetStubSettings(settings)
+}
+
+// SetDefaultExtractDir sets the default extraction directory
+func (w *Writer) SetDefaultExtractDir(dir string) error {
+	return w.header.SetDefaultExtractDir(dir)
+}
+
 // AddBinary adds a binary to the fat binary
 func (w *Writer) AddBinary(entry *BinaryEntry) error {
 	// Calculate checksum of original data
@@ -215,7 +225,7 @@ func (w *Writer) calculateAndWriteChecksum() error {
 }
 
 // WriteToFile is a convenience method to write to a file path
-func WriteToFile(path string, stubData []byte, entries []*BinaryEntry, stubArch Architecture, stubArchVer ArchVersion) error {
+func WriteToFile(path string, stubData []byte, entries []*BinaryEntry, stubArch Architecture, stubArchVer ArchVersion, stubSettings StubSettings, extractDir string) error {
 	file, err := os.Create(path)
 	if err != nil {
 		return err
@@ -224,6 +234,12 @@ func WriteToFile(path string, stubData []byte, entries []*BinaryEntry, stubArch 
 
 	writer := NewWriter(file, stubData)
 	writer.SetStubArchitecture(stubArch, stubArchVer)
+	writer.SetStubSettings(stubSettings)
+	if extractDir != "" {
+		if err := writer.SetDefaultExtractDir(extractDir); err != nil {
+			return err
+		}
+	}
 
 	for _, entry := range entries {
 		if err := writer.AddBinary(entry); err != nil {
