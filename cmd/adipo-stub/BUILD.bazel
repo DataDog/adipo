@@ -1,9 +1,9 @@
 load("@rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_library(
-    name = "stub_lib",
+    name = "adipo-stub_lib",
     srcs = ["main.go"],
-    importpath = "github.com/DataDog/adipo/stub",
+    importpath = "github.com/DataDog/adipo/cmd/adipo-stub",
     visibility = ["//visibility:private"],
     deps = [
         "//internal/compression",
@@ -15,8 +15,8 @@ go_library(
 )
 
 go_binary(
-    name = "stub",
-    embed = [":stub_lib"],
+    name = "adipo-stub",
+    embed = [":adipo-stub_lib"],
     goarch = "amd64",
     goos = "linux",
     pure = "on",

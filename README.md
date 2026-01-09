@@ -83,10 +83,18 @@ Build one Docker image for amd64 and one for arm64, but each contains a fat bina
 ### Install with Go
 
 ```bash
+# Install adipo
 go install github.com/DataDog/adipo/cmd/adipo@latest
+
+# Install adipo-stub (optional, required for creating fat binaries)
+go install github.com/DataDog/adipo/cmd/adipo-stub@latest
 ```
 
-This will install `adipo` to `$GOPATH/bin` (usually `~/go/bin`). Make sure this directory is in your `PATH`.
+This will install `adipo` and `adipo-stub` to `$GOPATH/bin` (usually `~/go/bin`). Make sure this directory is in your `PATH`.
+
+**Note:** When installing via `go install`, the stub binary is not embedded in `adipo`. You need to either:
+- Install `adipo-stub` separately and use `--stub-path $(which adipo-stub)` when creating fat binaries
+- Download pre-built stubs from [GitHub releases](https://github.com/DataDog/adipo/releases)
 
 ### Build from Source
 
@@ -124,6 +132,11 @@ adipo create -o app.fat \
   --binary app-v2:x86-64-v2 \
   --binary app-v3:x86-64-v3 \
   --binary app-v4:x86-64-v4
+
+# If installed via go install, specify stub path
+adipo create --stub-path $(which adipo-stub) -o app.fat \
+  --binary app-v1:x86-64-v1 \
+  --binary app-v2:x86-64-v2
 
 # With auto-detection (uses baseline versions)
 adipo create -o app.fat app-v1 app-v2 app-v3 app-v4

@@ -54,7 +54,7 @@ jobs:
 
           # Build standalone stub for this platform
           STUB_NAME="adipo-stub-${GOOS}-${GOARCH}"
-          go build -trimpath -ldflags='-s -w' -o "${STUB_NAME}" ./stub
+          go build -trimpath -ldflags='-s -w' -o "${STUB_NAME}" ./cmd/adipo-stub
 
           # Create release directory
           mkdir -p release

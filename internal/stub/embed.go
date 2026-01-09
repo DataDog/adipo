@@ -1,6 +1,6 @@
 package stub
 
-//go:generate sh -c "cd ../../stub && go build -trimpath -ldflags='-s -w' -o /tmp/adipo-stub-build.bin . && printf 'package stub\\n\\nfunc init() {\\n\\tStubBinary = []byte{' > ../internal/stub/stub_generated.go && od -An -tx1 -v /tmp/adipo-stub-build.bin | tr -d ' \\n' | sed 's/../0x&,/g' | sed 's/,$//' >> ../internal/stub/stub_generated.go && printf '}\\n}\\n' >> ../internal/stub/stub_generated.go && rm /tmp/adipo-stub-build.bin"
+//go:generate sh -c "cd ../../cmd/adipo-stub && go build -trimpath -ldflags='-s -w' -o /tmp/adipo-stub-build.bin . && printf 'package stub\\n\\nfunc init() {\\n\\tStubBinary = []byte{' > ../../internal/stub/stub_generated.go && od -An -tx1 -v /tmp/adipo-stub-build.bin | tr -d ' \\n' | sed 's/../0x&,/g' | sed 's/,$//' >> ../../internal/stub/stub_generated.go && printf '}\\n}\\n' >> ../../internal/stub/stub_generated.go && rm /tmp/adipo-stub-build.bin"
 
 import (
 	"fmt"

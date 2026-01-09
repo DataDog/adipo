@@ -10,10 +10,10 @@ filegroup(
 # Generate stub_generated.go from the stub binary
 genrule(
     name = "generate_stub_go",
-    srcs = ["//stub:stub"],
+    srcs = ["//cmd/adipo-stub:adipo-stub"],
     outs = ["stub_generated.go"],
     cmd = """
-    STUB_BIN=$(location //stub:stub)
+    STUB_BIN=$(location //cmd/adipo-stub:adipo-stub)
     OUTPUT=$@
 
     # Start the Go file

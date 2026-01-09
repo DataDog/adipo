@@ -34,7 +34,7 @@ build:
 ## stub: Build the self-extracting stub binary for current host
 stub:
 	@echo "Building stub binary for current host..."
-	go build $(STUBFLAGS) -o $(STUB_BIN) ./stub
+	go build $(STUBFLAGS) -o $(STUB_BIN) ./cmd/adipo-stub
 
 ## clean: Remove built binaries
 clean:
@@ -88,16 +88,16 @@ mod-tidy:
 build-all-arch:
 	@echo "Building for multiple architectures..."
 	@echo "Building linux/amd64..."
-	@GOOS=linux GOARCH=amd64 go build $(STUBFLAGS) -o $(STUB_BIN) ./stub
+	@GOOS=linux GOARCH=amd64 go build $(STUBFLAGS) -o $(STUB_BIN) ./cmd/adipo-stub
 	@GOOS=linux GOARCH=amd64 go build $(MAINFLAGS) -o $(MAIN_BIN)-linux-amd64 ./cmd/adipo
 	@echo "Building linux/arm64..."
-	@GOOS=linux GOARCH=arm64 go build $(STUBFLAGS) -o $(STUB_BIN) ./stub
+	@GOOS=linux GOARCH=arm64 go build $(STUBFLAGS) -o $(STUB_BIN) ./cmd/adipo-stub
 	@GOOS=linux GOARCH=arm64 go build $(MAINFLAGS) -o $(MAIN_BIN)-linux-arm64 ./cmd/adipo
 	@echo "Building darwin/amd64..."
-	@GOOS=darwin GOARCH=amd64 go build $(STUBFLAGS) -o $(STUB_BIN) ./stub
+	@GOOS=darwin GOARCH=amd64 go build $(STUBFLAGS) -o $(STUB_BIN) ./cmd/adipo-stub
 	@GOOS=darwin GOARCH=amd64 go build $(MAINFLAGS) -o $(MAIN_BIN)-darwin-amd64 ./cmd/adipo
 	@echo "Building darwin/arm64..."
-	@GOOS=darwin GOARCH=arm64 go build $(STUBFLAGS) -o $(STUB_BIN) ./stub
+	@GOOS=darwin GOARCH=arm64 go build $(STUBFLAGS) -o $(STUB_BIN) ./cmd/adipo-stub
 	@GOOS=darwin GOARCH=arm64 go build $(MAINFLAGS) -o $(MAIN_BIN)-darwin-arm64 ./cmd/adipo
 	@rm -f $(STUB_BIN)
 	@echo "Built: $(MAIN_BIN)-{linux,darwin}-{amd64,arm64}"
@@ -106,10 +106,10 @@ build-all-arch:
 stub-all-arch:
 	@echo "Building stub for multiple architectures..."
 	@mkdir -p build/stub
-	@GOOS=linux GOARCH=amd64 go build $(STUBFLAGS) -o build/stub/stub-linux-amd64 ./stub
-	@GOOS=linux GOARCH=arm64 go build $(STUBFLAGS) -o build/stub/stub-linux-arm64 ./stub
-	@GOOS=darwin GOARCH=amd64 go build $(STUBFLAGS) -o build/stub/stub-darwin-amd64 ./stub
-	@GOOS=darwin GOARCH=arm64 go build $(STUBFLAGS) -o build/stub/stub-darwin-arm64 ./stub
+	@GOOS=linux GOARCH=amd64 go build $(STUBFLAGS) -o build/stub/adipo-stub-linux-amd64 ./cmd/adipo-stub
+	@GOOS=linux GOARCH=arm64 go build $(STUBFLAGS) -o build/stub/adipo-stub-linux-arm64 ./cmd/adipo-stub
+	@GOOS=darwin GOARCH=amd64 go build $(STUBFLAGS) -o build/stub/adipo-stub-darwin-amd64 ./cmd/adipo-stub
+	@GOOS=darwin GOARCH=arm64 go build $(STUBFLAGS) -o build/stub/adipo-stub-darwin-arm64 ./cmd/adipo-stub
 	@echo "Built stubs in build/stub/"
 
 ## integration-test-linux: Build and run integration test for Linux binaries
