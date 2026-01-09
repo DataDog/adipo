@@ -152,11 +152,13 @@ jobs:
           echo "RELEASE_NOTES_FILE=release_notes.md" >> $GITHUB_OUTPUT
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          body_path: ${{ steps.release_notes.outputs.RELEASE_NOTES_FILE }}
-          files: release/*
-          draft: false
-          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+
+          # Create the release with notes
+          gh release create "${VERSION}" \
+            --title "adipo ${VERSION}" \
+            --notes-file "${{ steps.release_notes.outputs.RELEASE_NOTES_FILE }}" \
+            release/*
