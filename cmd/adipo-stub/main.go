@@ -86,11 +86,16 @@ func main() {
 		if verbose {
 			fmt.Fprintf(os.Stderr, "adipo stub: forced specification: %s\n", forceSpec)
 		}
-		// TODO: Parse forced specification
-		// For now, still detect but we could override
-		caps, err = cpu.Detect()
+		// Parse forced specification and create synthetic capabilities
+		caps, err = createForcedCapabilities(forceSpec)
 		if err != nil {
-			fatal("failed to detect CPU: %v", err)
+			fatal("failed to parse forced specification '%s': %v", forceSpec, err)
+		}
+		if verbose {
+			fmt.Fprintf(os.Stderr, "adipo stub: forcing CPU: %s\n", caps.String())
+			if debug {
+				fmt.Fprintf(os.Stderr, "adipo stub: forced features: %v\n", caps.FeatureList())
+			}
 		}
 	} else {
 		caps, err = cpu.Detect()
@@ -199,6 +204,42 @@ func main() {
 
 	// This line should never be reached
 	fatal("exec returned unexpectedly")
+}
+
+func createForcedCapabilities(spec string) (*cpu.Capabilities, error) {
+	// Parse the architecture specification
+	archSpec, err := format.ParseArchSpec(spec)
+	if err != nil {
+		return nil, fmt.Errorf("invalid architecture specification: %w", err)
+	}
+
+	// Create synthetic capabilities that claim to support this architecture/version
+	caps := cpu.NewCapabilities(archSpec.Architecture.String())
+	caps.ArchType = archSpec.Architecture
+	caps.Version = archSpec.ArchVersion
+	caps.VersionStr = archSpec.ArchVersion.String(archSpec.Architecture)
+
+	// Set feature mask to include all features for this version
+	// This ensures compatibility checks pass for the forced selection
+	caps.FeatureMask = archSpec.RequiredFeatures
+
+	// Set all extended feature masks to all-bits-on to pass any extended feature checks
+	// (Forced selection is mainly for basic arch/version, not fine-grained feature matching)
+	for i := 0; i < len(caps.ExtMasks); i++ {
+		caps.ExtMasks[i] = ^uint64(0) // All bits set
+	}
+
+	// Add feature names to the feature map for display
+	if len(archSpec.FeatureNames) > 0 {
+		for _, name := range archSpec.FeatureNames {
+			caps.Features[name] = struct{}{}
+		}
+	} else {
+		// If no specific features, add a marker for debugging output
+		caps.Features["forced"] = struct{}{}
+	}
+
+	return caps, nil
 }
 
 func printDetailedSelectionError(caps *cpu.Capabilities, binaries []*format.BinaryMetadata) {
