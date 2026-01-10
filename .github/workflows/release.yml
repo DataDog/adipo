@@ -43,7 +43,7 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: |
-          # Build the main binary with embedded stub
+          # Build the main binary
           make build
 
           # Set binary name based on platform
@@ -62,16 +62,16 @@ jobs:
           # Create archive name following traditional pattern
           ARCHIVE_NAME="adipo-${VERSION}-${GOOS}-${GOARCH}"
 
-          # Create archive (binary is in current directory from make build)
+          # Create archive with both adipo and stub
           if [ "$GOOS" = "windows" ]; then
-            # Windows uses zip
-            zip "release/${ARCHIVE_NAME}.zip" ${BINARY_NAME}
+            # Windows uses zip - include both binaries
+            zip "release/${ARCHIVE_NAME}.zip" ${BINARY_NAME} ${STUB_NAME}
           else
-            # Linux/macOS use tar.gz
-            tar czf "release/${ARCHIVE_NAME}.tar.gz" ${BINARY_NAME}
+            # Linux/macOS use tar.gz - include both binaries
+            tar czf "release/${ARCHIVE_NAME}.tar.gz" ${BINARY_NAME} ${STUB_NAME}
           fi
 
-          # Copy standalone stub to release directory
+          # Also copy standalone stub to release directory (for separate download if needed)
           cp "${STUB_NAME}" release/
 
           # Generate checksums
@@ -113,15 +113,17 @@ jobs:
           cat > release_notes.md << EOF
           ## Installation
 
-          ### Using Pre-built Binaries
+          ### Using Pre-built Binaries (Recommended)
 
-          Download the appropriate archive for your platform:
+          Each release archive contains both \`adipo\` and the corresponding \`adipo-stub\` binary:
 
           **Linux AMD64:**
           \`\`\`bash
           curl -LO https://github.com/${GITHUB_REPOSITORY}/releases/download/${VERSION}/adipo-${VERSION}-linux-amd64.tar.gz
           tar xzf adipo-${VERSION}-linux-amd64.tar.gz
+          # Archive contains: adipo, adipo-stub-linux-amd64
           sudo mv adipo /usr/local/bin/
+          sudo mv adipo-stub-linux-amd64 /usr/local/bin/
           \`\`\`
 
           **Linux ARM64:**
@@ -129,6 +131,7 @@ jobs:
           curl -LO https://github.com/${GITHUB_REPOSITORY}/releases/download/${VERSION}/adipo-${VERSION}-linux-arm64.tar.gz
           tar xzf adipo-${VERSION}-linux-arm64.tar.gz
           sudo mv adipo /usr/local/bin/
+          sudo mv adipo-stub-linux-arm64 /usr/local/bin/
           \`\`\`
 
           **macOS AMD64 (Intel):**
@@ -136,6 +139,7 @@ jobs:
           curl -LO https://github.com/${GITHUB_REPOSITORY}/releases/download/${VERSION}/adipo-${VERSION}-darwin-amd64.tar.gz
           tar xzf adipo-${VERSION}-darwin-amd64.tar.gz
           sudo mv adipo /usr/local/bin/
+          sudo mv adipo-stub-darwin-amd64 /usr/local/bin/
           \`\`\`
 
           **macOS ARM64 (Apple Silicon):**
@@ -143,33 +147,31 @@ jobs:
           curl -LO https://github.com/${GITHUB_REPOSITORY}/releases/download/${VERSION}/adipo-${VERSION}-darwin-arm64.tar.gz
           tar xzf adipo-${VERSION}-darwin-arm64.tar.gz
           sudo mv adipo /usr/local/bin/
+          sudo mv adipo-stub-darwin-arm64 /usr/local/bin/
           \`\`\`
+
+          The stub binary enables creating self-extracting fat binaries. Place it in the same directory as \`adipo\` for automatic discovery.
 
           ### Using go install
 
           \`\`\`bash
           go install github.com/DataDog/adipo/cmd/adipo@${VERSION}
+          go install github.com/DataDog/adipo/cmd/adipo-stub@${VERSION}
           \`\`\`
 
-          **Note:** When using \`go install\`, you'll need to download a stub binary for your platform to create fat binaries:
-
-          \`\`\`bash
-          # Download stub for your platform
-          curl -LO https://github.com/${GITHUB_REPOSITORY}/releases/download/${VERSION}/adipo-stub-linux-amd64
-
-          # Use it when creating fat binaries
-          adipo create --stub-path ./adipo-stub-linux-amd64 -o app.fat app1 app2
-          \`\`\`
-
-          Available stub binaries: \`adipo-stub-{linux,darwin}-{amd64,arm64}\`
+          **Note:** Both binaries should be installed to the same directory (typically \`~/go/bin/\`) for automatic stub discovery. Alternatively, you can:
+          - Download a pre-built stub from the release assets
+          - Use \`--stub-path\` to specify the stub location
+          - Use \`--no-stub\` to create fat binaries without self-extraction support
 
           ### Verifying Downloads
 
           Verify the integrity of your download using SHA256 checksums:
           \`\`\`bash
           sha256sum -c adipo-${VERSION}-<os>-<arch>.sha256
-          sha256sum -c adipo-stub-<os>-<arch>.sha256
           \`\`\`
+
+          Individual stub binaries are also available as separate downloads with their own checksums.
           EOF
 
           echo "RELEASE_NOTES_FILE=release_notes.md" >> $GITHUB_OUTPUT
