@@ -10,6 +10,7 @@
 adipo
 
 # Stub binary and generated code (generated at build time)
+build/
 internal/stub/stub.bin
 internal/stub/stub_generated.go
 adipo-stub*
