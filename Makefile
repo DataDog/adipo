@@ -128,6 +128,8 @@ integration-test-impl:
 	@echo "Running $(TEST_NAME) integration test..."
 	@echo "Building adipo for host platform..."
 	@go build $(MAINFLAGS) -o $(MAIN_BIN) ./cmd/adipo
+	@echo "Building stub for host platform..."
+	@go build $(STUBFLAGS) -o adipo-stub ./cmd/adipo-stub
 	@echo "Building test binaries..."
 	@mkdir -p test/bin
 	@echo 'package main\nimport "fmt"\nfunc main() { fmt.Println("Hello from test binary!") }' > test/bin/hello.go
@@ -163,7 +165,7 @@ integration-test-impl:
 	@echo "Extracting binary..."
 	@./$(MAIN_BIN) extract -t 0 -o test/bin/hello-extracted test/bin/hello.fat
 	@echo "$(TEST_NAME) integration test passed!"
-	@rm -rf test/bin
+	@rm -rf test/bin adipo-stub
 
 ## check: Run all checks (fmt, vet, lint, test)
 check: fmt vet test
