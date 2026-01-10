@@ -75,8 +75,10 @@ func DetectX86_64() (*Capabilities, error) {
 		caps.Features["bmi2"] = struct{}{}
 	}
 
-	// LZCNT (part of ABM)
-	if cpu.X86.HasBMI1 { // LZCNT is typically part of BMI1
+	// LZCNT: Not exposed by golang.org/x/sys/cpu
+	// Infer from AVX2 presence - all CPUs with AVX2 (Haswell+) have LZCNT
+	// LZCNT is required for v3, and AVX2 is also required for v3
+	if cpu.X86.HasAVX2 {
 		featureMask |= X86_LZCNT
 		caps.Features["lzcnt"] = struct{}{}
 	}
