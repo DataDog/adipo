@@ -17,7 +17,7 @@ func TestScore(t *testing.T) {
 			bin: &format.BinaryMetadata{
 				Architecture:   format.ArchX86_64,
 				ArchVersion:    format.X86_64_V3,
-				CompressedSize: 1024, // 1KB penalty = -1
+				CompressedSize: 1024 * 1024, // 1MB penalty = -1
 			},
 			wantScore: 299, // version 3 * 100 - 1
 		},

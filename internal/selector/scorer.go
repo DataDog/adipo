@@ -36,8 +36,8 @@ func (s *Scorer) Score(binary *format.BinaryMetadata) int {
 	score += s.featureScore(binary) * 10
 
 	// Penalty for larger size (prefer smaller if equal features)
-	// Subtract 1 point per KB of compressed size
-	score -= int(binary.CompressedSize / 1024)
+	// Subtract 1 point per MB of compressed size
+	score -= int(binary.CompressedSize / (1024 * 1024))
 
 	return score
 }
