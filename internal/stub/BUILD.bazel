@@ -1,39 +1,9 @@
 load("@rules_go//go:def.bzl", "go_library")
 
-# Create a filegroup for the stub binary
-filegroup(
-    name = "stub_binary",
-    srcs = ["//:generate_stub"],
-    visibility = ["//visibility:public"],
-)
-
-# Generate stub_generated.go from the stub binary
-genrule(
-    name = "generate_stub_go",
-    srcs = ["//cmd/adipo-stub:adipo-stub"],
-    outs = ["stub_generated.go"],
-    cmd = """
-    STUB_BIN=$(location //cmd/adipo-stub:adipo-stub)
-    OUTPUT=$@
-
-    # Start the Go file
-    printf 'package stub\\n\\nfunc init() {\\n\\tStubBinary = []byte{' > $$OUTPUT
-
-    # Convert binary to hex bytes
-    od -An -tx1 -v $$STUB_BIN | tr -d ' \\n' | sed 's/../0x&,/g' | sed 's/,$$//' >> $$OUTPUT
-
-    # Close the function
-    printf '}\\n}\\n' >> $$OUTPUT
-    """,
-    visibility = ["//visibility:private"],
-)
-
+# Embedding support has been removed - stub discovery happens at runtime
 go_library(
     name = "stub",
-    srcs = [
-        "embed.go",
-        ":generate_stub_go",
-    ],
+    srcs = ["embed.go"],
     importpath = "github.com/DataDog/adipo/internal/stub",
     visibility = ["//:__subpackages__"],
 )

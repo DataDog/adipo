@@ -13,12 +13,3 @@ gazelle(
     ],
     command = "update-repos",
 )
-
-# Generate the embedded stub at the root level
-genrule(
-    name = "generate_stub",
-    srcs = ["//cmd/adipo-stub:adipo-stub"],
-    outs = ["stub.bin"],
-    cmd = "cp $(location //cmd/adipo-stub:adipo-stub) $@",
-    visibility = ["//visibility:public"],
-)

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/DataDog/adipo/internal/stub"
 	"github.com/spf13/cobra"
 )
 
@@ -15,6 +14,14 @@ var (
 )
 
 func main() {
+	// TODO: Future self-stub mode support could be added here.
+	// When invoked with a non-standard name (not 'adipo' or 'adipo-*'),
+	// the binary could detect it's embedded in a fat binary and act as a stub.
+	// Challenges to solve:
+	// - adipo binary contains "ADIPOFAT" magic marker constant that interferes with detection
+	// - Need robust magic marker search that skips false positives in code/data sections
+	// Alternative: Consider robust stub embedding or separate stub binaries (current approach)
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -32,13 +39,7 @@ At runtime, adipo automatically selects and executes the best binary for the cur
 }
 
 func getVersionString() string {
-	baseVersion := fmt.Sprintf("%s (commit: %s, built: %s)", version, commit, date)
-
-	stubSize := stub.StubSize()
-	if stubSize > 0 {
-		return fmt.Sprintf("%s, stub: embedded (%d bytes)", baseVersion, stubSize)
-	}
-	return fmt.Sprintf("%s, stub: not embedded", baseVersion)
+	return fmt.Sprintf("%s (commit: %s, built: %s)", version, commit, date)
 }
 
 func init() {

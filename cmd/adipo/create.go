@@ -4,13 +4,13 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/DataDog/adipo/internal/compression"
 	"github.com/DataDog/adipo/internal/elf"
 	"github.com/DataDog/adipo/internal/format"
 	"github.com/DataDog/adipo/internal/macho"
-	"github.com/DataDog/adipo/internal/stub"
 	"github.com/spf13/cobra"
 )
 
@@ -67,7 +67,7 @@ func init() {
 	createCmd.Flags().IntVar(&createFlags.level, "level", 3, "Compression level")
 	createCmd.Flags().BoolVar(&createFlags.verify, "verify", true, "Verify binary format (ELF/Mach-O) and executability")
 	createCmd.Flags().BoolVar(&createFlags.noStub, "no-stub", false, "Create fat binary without self-extracting stub (saves space, requires extraction tool)")
-	createCmd.Flags().StringVar(&createFlags.stubPath, "stub-path", "", "Path to external stub binary (use when embedded stub not available)")
+	createCmd.Flags().StringVar(&createFlags.stubPath, "stub-path", "", "Path to stub binary (overrides automatic discovery)")
 	createCmd.Flags().StringVar(&createFlags.defaultExtractDir, "default-extract-dir", "", "Default extraction directory for stub/run (supports ~ for home directory)")
 	createCmd.Flags().BoolVar(&createFlags.defaultCleanupOnExit, "default-cleanup-on-exit", true, "Default: clean up extracted binary after execution")
 	createCmd.Flags().BoolVar(&createFlags.defaultVerbose, "default-verbose", false, "Default: show verbose output (CPU detection, selection, extraction)")
@@ -101,42 +101,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Creating fat binary with %d binaries\n", len(inputs))
 
-	// Load stub binary (unless --no-stub)
-	var stubData []byte
-	var stubArch format.Architecture
-	var stubArchVer format.ArchVersion
-
-	if !createFlags.noStub {
-		// Try to load stub from --stub-path or embedded
-		if createFlags.stubPath != "" {
-			// Load external stub
-			fmt.Printf("Loading stub from: %s\n", createFlags.stubPath)
-			stubData, err = os.ReadFile(createFlags.stubPath)
-			if err != nil {
-				return fmt.Errorf("failed to read stub from %s: %w", createFlags.stubPath, err)
-			}
-		} else {
-			// Try embedded stub
-			stubData, err = stub.GetStubBinary()
-			if err != nil {
-				return fmt.Errorf("failed to load stub binary: %w", err)
-			}
-		}
-
-		fmt.Printf("Stub size: %d bytes\n", len(stubData))
-
-		// Detect stub architecture
-		stubArch, stubArchVer, err = detectStubArchitecture(stubData)
-		if err != nil {
-			return fmt.Errorf("failed to detect stub architecture: %w", err)
-		}
-
-		fmt.Printf("Stub architecture: %s-%s\n", stubArch.String(), stubArchVer.String(stubArch))
-	} else {
-		fmt.Printf("Creating without stub (--no-stub)\n")
-	}
-
-	// Process each input binary
+	// Process each input binary first (we need to know target architecture for stub selection)
 	entries := make([]*format.BinaryEntry, 0, len(inputs))
 
 	for i, input := range inputs {
@@ -158,11 +123,68 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		entries = append(entries, entry)
 	}
 
-	// Validate stub compatibility with binaries
+	// Load stub binary (unless --no-stub)
+	// Now that we've processed binaries, we can determine target architecture for stub selection
+	var stubData []byte
+	var stubArch format.Architecture
+	var stubArchVer format.ArchVersion
+
 	if !createFlags.noStub {
+		if createFlags.stubPath != "" {
+			// 1. Explicit --stub-path (highest priority)
+			fmt.Printf("\nLoading stub from: %s\n", createFlags.stubPath)
+			stubData, err = os.ReadFile(createFlags.stubPath)
+			if err != nil {
+				return fmt.Errorf("failed to read stub from %s: %w", createFlags.stubPath, err)
+			}
+		} else {
+			// 2. Auto-discover stub next to adipo
+
+			// Determine target architecture from input binaries
+			targetGOOS, targetGOARCH, err := determineTargetStubArch(entries)
+			if err != nil {
+				return fmt.Errorf("cannot auto-select stub: %w. Use --stub-path to specify stub explicitly", err)
+			}
+
+			// Try to find stub next to adipo binary
+			stubPath, err := findStubBinaryNextToAdipo(targetGOOS, targetGOARCH)
+			if err != nil {
+				// TODO: Consider adding self-stub support (using adipo itself) or robust stub embedding in the future.
+				// This would eliminate the need for separate stub binaries. Challenges include:
+				// - Self-stub: adipo binary contains "ADIPOFAT" constant that interferes with magic marker detection
+				// - Embedding: increases binary size and complicates cross-compilation
+				// For now, require explicit stub files.
+				return fmt.Errorf("no stub binary found: %w.\n\nPlease ensure an adipo-stub binary is available:\n"+
+					"  - Place 'adipo-stub-%s-%s' next to the adipo binary, or\n"+
+					"  - Place a generic 'adipo-stub' next to the adipo binary, or\n"+
+					"  - Use --stub-path to specify the stub location, or\n"+
+					"  - Use --no-stub to create a fat binary without self-extraction support",
+					err, targetGOOS, targetGOARCH)
+			}
+
+			fmt.Printf("\nFound stub: %s\n", stubPath)
+			stubData, err = os.ReadFile(stubPath)
+			if err != nil {
+				return fmt.Errorf("failed to read stub from %s: %w", stubPath, err)
+			}
+		}
+
+		fmt.Printf("Stub size: %d bytes\n", len(stubData))
+
+		// Detect stub architecture
+		stubArch, stubArchVer, err = detectStubArchitecture(stubData)
+		if err != nil {
+			return fmt.Errorf("failed to detect stub architecture: %w", err)
+		}
+
+		fmt.Printf("Stub architecture: %s-%s\n", stubArch.String(), stubArchVer.String(stubArch))
+
+		// Validate stub compatibility with binaries
 		if err := validateStubCompatibility(stubArch, stubData, entries); err != nil {
 			return fmt.Errorf("stub compatibility check failed: %w", err)
 		}
+	} else {
+		fmt.Printf("\nCreating without stub (--no-stub)\n")
 	}
 
 	// Build stub settings
@@ -232,6 +254,98 @@ func collectInputBinaries(args []string) ([]*InputBinary, error) {
 	}
 
 	return inputs, nil
+}
+
+// determineTargetStubArch determines the target OS and architecture from input binary entries
+// Returns error if binaries have mixed main architectures or OS formats
+func determineTargetStubArch(entries []*format.BinaryEntry) (goos, goarch string, err error) {
+	if len(entries) == 0 {
+		return "", "", fmt.Errorf("no binaries to determine target architecture")
+	}
+
+	// Get the main architecture and format from first binary
+	firstArch := entries[0].Metadata.Architecture
+	firstFormat := entries[0].Metadata.Format
+
+	// Check if all binaries have compatible architecture and format
+	for i, entry := range entries {
+		arch := entry.Metadata.Architecture
+		format := entry.Metadata.Format
+
+		// Check if main architecture family matches
+		firstFamily := getArchFamily(firstArch)
+		currentFamily := getArchFamily(arch)
+		if firstFamily != currentFamily {
+			return "", "", fmt.Errorf("mixed architectures detected: binary 0 is %s, binary %d is %s. Use --stub-path to explicitly specify stub", firstArch.String(), i, arch.String())
+		}
+
+		// Check if OS format matches
+		if firstFormat != format {
+			return "", "", fmt.Errorf("mixed OS formats detected: binary 0 is %s, binary %d is %s. Use --stub-path to explicitly specify stub", firstFormat.String(), i, format.String())
+		}
+	}
+
+	// Map format to GOOS
+	switch firstFormat {
+	case format.FormatELF:
+		goos = "linux"
+	case format.FormatMachO:
+		goos = "darwin"
+	default:
+		return "", "", fmt.Errorf("unsupported binary format for stub selection: %s", firstFormat.String())
+	}
+
+	// Map architecture to GOARCH
+	switch getArchFamily(firstArch) {
+	case "x86-64":
+		goarch = "amd64"
+	case "aarch64":
+		goarch = "arm64"
+	default:
+		return "", "", fmt.Errorf("unsupported architecture for stub selection: %s", firstArch.String())
+	}
+
+	return goos, goarch, nil
+}
+
+// getArchFamily returns the main architecture family (x86-64 or aarch64)
+func getArchFamily(arch format.Architecture) string {
+	switch arch {
+	case format.ArchX86_64:
+		return "x86-64"
+	case format.ArchARM64:
+		return "aarch64"
+	default:
+		return "unknown"
+	}
+}
+
+// findStubBinaryNextToAdipo searches for stub binary next to adipo executable
+// Priority: adipo-stub-{goos}-{goarch} > adipo-stub (generic) > error
+func findStubBinaryNextToAdipo(goos, goarch string) (string, error) {
+	// Get adipo executable path
+	exePath, err := os.Executable()
+	if err != nil {
+		return "", fmt.Errorf("failed to get adipo executable path: %w", err)
+	}
+
+	// Get directory containing adipo
+	exeDir := filepath.Dir(exePath)
+
+	// Check in priority order
+	candidates := []string{
+		fmt.Sprintf("adipo-stub-%s-%s", goos, goarch), // Platform-specific
+		"adipo-stub",                                   // Generic
+	}
+
+	for _, candidate := range candidates {
+		stubPath := filepath.Join(exeDir, candidate)
+		if _, err := os.Stat(stubPath); err == nil {
+			return stubPath, nil
+		}
+	}
+
+	return "", fmt.Errorf("no stub binary found next to adipo (checked: %v in %s)", candidates, exeDir)
 }
 
 // processBinary processes a single input binary

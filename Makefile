@@ -25,10 +25,9 @@ help:
 	@echo 'Usage:'
 	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' | sed -e 's/^/ /'
 
-## build: Build the adipo binary (builds stub first)
+## build: Build the adipo binary
 build:
-	@echo "Building adipo with stub for current host..."
-	go generate ./internal/stub
+	@echo "Building adipo..."
 	go build $(MAINFLAGS) -o $(MAIN_BIN) ./cmd/adipo
 
 ## stub: Build the self-extracting stub binary for current host
@@ -55,8 +54,7 @@ test-coverage:
 
 ## install: Install adipo to GOPATH/bin
 install:
-	@echo "Installing adipo (with stub for current host)..."
-	go generate ./internal/stub
+	@echo "Installing adipo..."
 	go install $(MAINFLAGS) ./cmd/adipo
 
 ## lint: Run golangci-lint
@@ -84,22 +82,13 @@ mod-tidy:
 	@echo "Tidying go.mod..."
 	go mod tidy
 
-## build-all-arch: Build for multiple OS/arch combinations (each with correct stub)
+## build-all-arch: Build for multiple OS/arch combinations
 build-all-arch:
 	@echo "Building for multiple architectures..."
-	@echo "Building linux/amd64..."
-	@GOOS=linux GOARCH=amd64 go build $(STUBFLAGS) -o $(STUB_BIN) ./cmd/adipo-stub
 	@GOOS=linux GOARCH=amd64 go build $(MAINFLAGS) -o $(MAIN_BIN)-linux-amd64 ./cmd/adipo
-	@echo "Building linux/arm64..."
-	@GOOS=linux GOARCH=arm64 go build $(STUBFLAGS) -o $(STUB_BIN) ./cmd/adipo-stub
 	@GOOS=linux GOARCH=arm64 go build $(MAINFLAGS) -o $(MAIN_BIN)-linux-arm64 ./cmd/adipo
-	@echo "Building darwin/amd64..."
-	@GOOS=darwin GOARCH=amd64 go build $(STUBFLAGS) -o $(STUB_BIN) ./cmd/adipo-stub
 	@GOOS=darwin GOARCH=amd64 go build $(MAINFLAGS) -o $(MAIN_BIN)-darwin-amd64 ./cmd/adipo
-	@echo "Building darwin/arm64..."
-	@GOOS=darwin GOARCH=arm64 go build $(STUBFLAGS) -o $(STUB_BIN) ./cmd/adipo-stub
 	@GOOS=darwin GOARCH=arm64 go build $(MAINFLAGS) -o $(MAIN_BIN)-darwin-arm64 ./cmd/adipo
-	@rm -f $(STUB_BIN)
 	@echo "Built: $(MAIN_BIN)-{linux,darwin}-{amd64,arm64}"
 
 ## stub-all-arch: Build stub for multiple architectures (for distribution)
@@ -138,7 +127,6 @@ integration-test-macos:
 integration-test-impl:
 	@echo "Running $(TEST_NAME) integration test..."
 	@echo "Building adipo for host platform..."
-	@go generate ./internal/stub
 	@go build $(MAINFLAGS) -o $(MAIN_BIN) ./cmd/adipo
 	@echo "Building test binaries..."
 	@mkdir -p test/bin
