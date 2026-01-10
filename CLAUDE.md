@@ -1,0 +1,2 @@
+- Read the README.md
+- Don't add mention to claude in the commit messages
