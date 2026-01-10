@@ -80,21 +80,46 @@ Build one Docker image for amd64 and one for arm64, but each contains a fat bina
 - Go 1.23 or later (required for ARM64 v8.1+ support via GOARM64)
 - Linux or macOS
 
+### Install from Pre-built Releases (Recommended)
+
+Download the appropriate archive for your platform from [GitHub releases](https://github.com/DataDog/adipo/releases).
+Each archive contains both `adipo` and the corresponding `adipo-stub` binary:
+
+**Linux AMD64:**
+```bash
+curl -LO https://github.com/DataDog/adipo/releases/download/v0.3.0/adipo-v0.3.0-linux-amd64.tar.gz
+tar xzf adipo-v0.3.0-linux-amd64.tar.gz
+# Archive contains: adipo, adipo-stub-linux-amd64
+sudo mv adipo /usr/local/bin/
+sudo mv adipo-stub-linux-amd64 /usr/local/bin/
+```
+
+**macOS ARM64 (Apple Silicon):**
+```bash
+curl -LO https://github.com/DataDog/adipo/releases/download/v0.3.0/adipo-v0.3.0-darwin-arm64.tar.gz
+tar xzf adipo-v0.3.0-darwin-arm64.tar.gz
+sudo mv adipo /usr/local/bin/
+sudo mv adipo-stub-darwin-arm64 /usr/local/bin/
+```
+
+The stub binary enables creating self-extracting fat binaries. Place it in the same directory as `adipo` for automatic discovery.
+
 ### Install with Go
 
 ```bash
-# Install adipo
+# Install both adipo and adipo-stub
 go install github.com/DataDog/adipo/cmd/adipo@latest
-
-# Install adipo-stub (optional, required for creating fat binaries)
 go install github.com/DataDog/adipo/cmd/adipo-stub@latest
 ```
 
-This will install `adipo` and `adipo-stub` to `$GOPATH/bin` (usually `~/go/bin`). Make sure this directory is in your `PATH`.
+Both will be installed to `$GOPATH/bin` (usually `~/go/bin`). Make sure this directory is in your `PATH`.
 
-**Note:** When installing via `go install`, the stub binary is not embedded in `adipo`. You need to either:
-- Install `adipo-stub` separately and use `--stub-path $(which adipo-stub)` when creating fat binaries
-- Download pre-built stubs from [GitHub releases](https://github.com/DataDog/adipo/releases)
+**Note:** Both binaries should be in the same directory for automatic stub discovery. When `adipo` creates a fat binary, it looks for `adipo-stub-{os}-{arch}` (e.g., `adipo-stub-linux-amd64`) or a generic `adipo-stub` next to the `adipo` binary.
+
+If the stub is in a different location, use `--stub-path` to specify it explicitly:
+```bash
+adipo create --stub-path /path/to/adipo-stub -o app.fat app1 app2
+```
 
 ### Build from Source
 
@@ -103,11 +128,15 @@ This will install `adipo` and `adipo-stub` to `$GOPATH/bin` (usually `~/go/bin`)
 git clone https://github.com/DataDog/adipo
 cd adipo
 
-# Build
+# Build adipo
 make build
 
+# Build stub for current platform
+make stub
+
 # Optionally install to /usr/local/bin
-sudo make install
+sudo mv adipo /usr/local/bin/
+sudo mv internal/stub/stub.bin /usr/local/bin/adipo-stub-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/amd64/')
 ```
 
 ### Alternative Build Systems
@@ -126,19 +155,15 @@ brew install adipo
 ### Create a Fat Binary
 
 ```bash
-# With explicit specifications (recommended)
+# Basic usage (automatic stub discovery)
+# adipo finds adipo-stub-{os}-{arch} or adipo-stub next to the adipo binary
 adipo create -o app.fat \
   --binary app-v1:x86-64-v1 \
   --binary app-v2:x86-64-v2 \
   --binary app-v3:x86-64-v3 \
   --binary app-v4:x86-64-v4
 
-# If installed via go install, specify stub path
-adipo create --stub-path $(which adipo-stub) -o app.fat \
-  --binary app-v1:x86-64-v1 \
-  --binary app-v2:x86-64-v2
-
-# With auto-detection (uses baseline versions)
+# With auto-detection of architecture (uses baseline versions)
 adipo create -o app.fat app-v1 app-v2 app-v3 app-v4
 
 # ARM64 example
@@ -147,18 +172,36 @@ adipo create -o app.fat \
   --binary app-sve:aarch64-v8.2,sve \
   --binary app-sve2:aarch64-v9.0,sve2
 
-# Mixed x86-64 and ARM64
-adipo create -o app.fat \
+# Mixed x86-64 and ARM64 requires explicit stub
+# (adipo cannot auto-detect which stub to use for mixed architectures)
+adipo create --stub-path /path/to/adipo-stub-linux-amd64 -o app.fat \
   --binary app-amd64-v2:x86-64-v2 \
   --binary app-amd64-v3:x86-64-v3 \
   --binary app-arm64:aarch64-v8.0
 
-# Without self-extracting stub (saves ~2-3MB)
+# Explicit stub path (useful for cross-compilation)
+adipo create --stub-path /path/to/adipo-stub-linux-amd64 -o app.fat \
+  --binary app-v1:x86-64-v1 \
+  --binary app-v2:x86-64-v2
+
+# Without self-extracting stub (saves ~2-3MB, requires extraction tool)
 adipo create -o app.fat --no-stub \
   --binary app-v1:x86-64-v1 \
   --binary app-v2:x86-64-v2
 # Note: Requires extraction with 'adipo extract' or 'adipo run' to execute
 ```
+
+#### How Stub Discovery Works
+
+When creating a fat binary, adipo looks for stub binaries in this order:
+
+1. **Explicit path** (if `--stub-path` is provided): Uses the specified stub
+2. **Platform-specific stub**: Looks for `adipo-stub-{os}-{arch}` next to adipo binary
+   - Example: `adipo-stub-linux-amd64`, `adipo-stub-darwin-arm64`
+3. **Generic stub**: Looks for `adipo-stub` next to adipo binary
+4. **Error**: If no stub is found and `--no-stub` is not specified
+
+The target platform is automatically determined from the input binaries. If binaries have mixed architectures (e.g., both x86-64 and ARM64), you must use `--stub-path` to specify which stub to use.
 
 ### Architecture Specification Format
 
