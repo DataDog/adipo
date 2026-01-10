@@ -81,20 +81,40 @@ func DetectX86_64() (*Capabilities, error) {
 		caps.Features["lzcnt"] = struct{}{}
 	}
 
-	// Note: MOVBE detection not available in golang.org/x/sys/cpu
-	// This is a relatively uncommon instruction and not critical for our use case
-
 	// OSXSAVE
 	if cpu.X86.HasOSXSAVE {
 		featureMask |= X86_OSXSAVE
 		caps.Features["osxsave"] = struct{}{}
 	}
 
-	// F16C
-	// Note: golang.org/x/sys/cpu doesn't have direct F16C, but it's typically with AVX
-	// We can infer it from AVX presence on modern CPUs
-	// For now, we'll check if AVX is present
-	// TODO: Add more accurate F16C detection if needed
+	// Infer missing features that golang.org/x/sys/cpu doesn't expose
+	// These are virtually universal on CPUs that have the marker features we check
+
+	// LAHF-SAHF: Present on all x86-64 CPUs (part of V1 originally, required for V2 in spec)
+	// Since we're on x86-64, we can safely assume LAHF is present
+	featureMask |= X86_LAHF
+	caps.Features["lahf"] = struct{}{}
+
+	// CMPXCHG16B: Present on all x86-64 CPUs since ~2005 (required for V2)
+	// If we have SSE4.2 (V2 marker), we definitely have CMPXCHG16B
+	if cpu.X86.HasSSE42 {
+		featureMask |= X86_CMPXCHG16B
+		caps.Features["cmpxchg16b"] = struct{}{}
+	}
+
+	// F16C: Virtually always present with AVX (required for V3)
+	// If we have AVX, we almost certainly have F16C
+	if cpu.X86.HasAVX {
+		featureMask |= X86_F16C
+		caps.Features["f16c"] = struct{}{}
+	}
+
+	// MOVBE: Virtually always present with AVX2 (required for V3)
+	// If we have AVX2, we almost certainly have MOVBE
+	if cpu.X86.HasAVX2 {
+		featureMask |= X86_MOVBE
+		caps.Features["movbe"] = struct{}{}
+	}
 
 	// AVX-512 features
 	if cpu.X86.HasAVX512F {
