@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "selector",
@@ -9,6 +9,20 @@ go_library(
     ],
     importpath = "github.com/DataDog/adipo/internal/selector",
     visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cpu",
+        "//internal/format",
+    ],
+)
+
+go_test(
+    name = "selector_test",
+    srcs = [
+        "matcher_test.go",
+        "scorer_test.go",
+        "selector_test.go",
+    ],
+    embed = [":selector"],
     deps = [
         "//internal/cpu",
         "//internal/format",

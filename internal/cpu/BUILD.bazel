@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "cpu",
@@ -25,4 +25,11 @@ go_library(
         ],
         "//conditions:default": [],
     }),
+)
+
+go_test(
+    name = "cpu_test",
+    srcs = ["capabilities_test.go"],
+    embed = [":cpu"],
+    deps = ["//internal/format"],
 )

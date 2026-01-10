@@ -16,6 +16,10 @@ go_library(
 
 go_test(
     name = "format_test",
-    srcs = ["format_test.go"],
+    srcs = [
+        "format_test.go",
+        "header_test.go",
+        "spec_test.go",
+    ],
     embed = [":format"],
 )
