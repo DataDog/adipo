@@ -115,7 +115,8 @@ func main() {
 	if verbose || debug {
 		result, err := sel.SelectBinaryVerbose()
 		if err != nil {
-			fatal("no compatible binary found: %v", err)
+			printDetailedSelectionError(caps, metadata)
+			os.Exit(1)
 		}
 
 		selectedIndex = result.SelectedIndex
@@ -137,7 +138,8 @@ func main() {
 		var err error
 		selectedIndex, selectedBinary, err = sel.SelectBinary()
 		if err != nil {
-			fatal("no compatible binary found: %v", err)
+			printDetailedSelectionError(caps, metadata)
+			os.Exit(1)
 		}
 	}
 
@@ -197,6 +199,100 @@ func main() {
 
 	// This line should never be reached
 	fatal("exec returned unexpectedly")
+}
+
+func printDetailedSelectionError(caps *cpu.Capabilities, binaries []*format.BinaryMetadata) {
+	fmt.Fprintf(os.Stderr, "\nadipo stub: ERROR - No compatible binary found\n\n")
+
+	// Show detected CPU
+	fmt.Fprintf(os.Stderr, "Detected CPU:\n")
+	fmt.Fprintf(os.Stderr, "  Architecture: %s\n", caps.String())
+	fmt.Fprintf(os.Stderr, "  Features:     %v\n", caps.FeatureList())
+	fmt.Fprintf(os.Stderr, "  Feature mask: 0x%x\n\n", caps.FeatureMask)
+
+	// Show available binaries
+	fmt.Fprintf(os.Stderr, "Available binaries in this fat binary:\n")
+	matcher := selector.NewMatcher(caps)
+	for i, bin := range binaries {
+		archStr := bin.Architecture.String()
+		versionStr := bin.ArchVersion.String(bin.Architecture)
+		compatible := matcher.IsCompatible(bin)
+
+		statusIcon := "✗"
+		if compatible {
+			statusIcon = "✓"
+		}
+
+		fmt.Fprintf(os.Stderr, "  %s Binary %d: %s-%s (features: 0x%x)\n",
+			statusIcon, i, archStr, versionStr, bin.RequiredFeatures)
+
+		// Show why incompatible
+		if !compatible {
+			reasons := getIncompatibilityReasons(caps, bin)
+			for _, reason := range reasons {
+				fmt.Fprintf(os.Stderr, "      → %s\n", reason)
+			}
+		}
+	}
+
+	fmt.Fprintf(os.Stderr, "\nSuggestions:\n")
+	fmt.Fprintf(os.Stderr, "  • Run 'ADIPO_VERBOSE=1 %s' to see more details\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  • Use 'adipo inspect %s' to see all bundled binaries\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  • Use 'adipo extract -t <index> %s' to extract a specific binary\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  • Use 'ADIPO_FORCE=<archspec> %s' to force selection (e.g., ADIPO_FORCE=x86-64-v1)\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  • Rebuild the fat binary with variants for your CPU architecture\n")
+	fmt.Fprintf(os.Stderr, "\n")
+}
+
+func getIncompatibilityReasons(caps *cpu.Capabilities, bin *format.BinaryMetadata) []string {
+	reasons := []string{}
+
+	// Check architecture mismatch
+	if caps.ArchType != bin.Architecture {
+		reasons = append(reasons, fmt.Sprintf("Architecture mismatch (need %s, have %s)",
+			bin.Architecture.String(), caps.ArchType.String()))
+		return reasons // If arch doesn't match, no point checking features
+	}
+
+	// Check version/feature requirements
+	if bin.Architecture == format.ArchX86_64 {
+		// Check if CPU version is less than required
+		if caps.Version < bin.ArchVersion {
+			reasons = append(reasons, fmt.Sprintf("CPU is %s but binary requires %s or higher",
+				caps.VersionStr, bin.ArchVersion.String(bin.Architecture)))
+		}
+	} else if bin.Architecture == format.ArchARM64 {
+		// For ARM64, check if CPU version is less than required
+		if caps.Version < bin.ArchVersion {
+			reasons = append(reasons, fmt.Sprintf("CPU is %s but binary requires %s or higher",
+				caps.VersionStr, bin.ArchVersion.String(bin.Architecture)))
+		}
+	}
+
+	// Check missing features
+	missingFeatures := bin.RequiredFeatures & ^caps.FeatureMask
+	if missingFeatures != 0 {
+		reasons = append(reasons, fmt.Sprintf("Missing required features: 0x%x", missingFeatures))
+	}
+
+	// Check extended features if any
+	for regID := 0; regID < len(bin.ExtFeatures); regID++ {
+		requiredMask := bin.ExtFeatures[regID]
+		if requiredMask == 0 {
+			continue // No requirements for this register
+		}
+		haveMask := caps.ExtMasks[regID]
+		missingMask := requiredMask & ^haveMask
+		if missingMask != 0 {
+			reasons = append(reasons, fmt.Sprintf("Missing extended features (reg %d): 0x%x", regID, missingMask))
+		}
+	}
+
+	if len(reasons) == 0 {
+		reasons = append(reasons, "Unknown incompatibility")
+	}
+
+	return reasons
 }
 
 func fatal(format string, args ...interface{}) {
