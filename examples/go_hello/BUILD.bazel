@@ -53,4 +53,5 @@ adipo_fat_binary(
         ":hello_v3": "x86-64-v3",
     },
     compression = "zstd",
+    stub = "//cmd/adipo-stub",
 )

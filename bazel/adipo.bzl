@@ -17,8 +17,16 @@ def _adipo_fat_binary_impl(ctx):
     if ctx.attr.compression:
         args.add("--compress", ctx.attr.compression)
 
-    # Add each binary with its specification
+    # Add stub binary if provided
     inputs = []
+    if ctx.attr.stub:
+        stub_file = ctx.attr.stub[DefaultInfo].files.to_list()[0]
+        inputs.append(stub_file)
+        args.add("--stub-path", stub_file.path)
+    elif ctx.attr.no_stub:
+        args.add("--no-stub")
+
+    # Add each binary with its specification
     for binary_target, spec in ctx.attr.binaries.items():
         binary_file = binary_target[DefaultInfo].files.to_list()[0]
         inputs.append(binary_file)
@@ -52,6 +60,14 @@ adipo_fat_binary = rule(
             doc = "Compression algorithm: zstd (default), lz4, gzip, or none",
             values = ["zstd", "lz4", "gzip", "none"],
         ),
+        "stub": attr.label(
+            allow_single_file = True,
+            doc = "Optional stub binary to use for self-extraction. If not provided and no_stub is False, adipo will try auto-discovery.",
+        ),
+        "no_stub": attr.bool(
+            default = False,
+            doc = "If True, create fat binary without self-extracting stub (--no-stub flag)",
+        ),
         "_adipo": attr.label(
             default = Label("//cmd/adipo"),
             executable = True,
@@ -72,6 +88,17 @@ Example:
             ":myapp_v3": "x86-64-v3",
         },
         compression = "zstd",
+        stub = "//cmd/adipo-stub",  # Optional: specify stub binary
+    )
+
+    # Without self-extracting stub:
+    adipo_fat_binary(
+        name = "myapp_fat_nostub",
+        binaries = {
+            ":myapp_v1": "x86-64-v1",
+            ":myapp_v2": "x86-64-v2",
+        },
+        no_stub = True,
     )
 """,
 )
