@@ -12,6 +12,7 @@ adipo
 # Stub binary and generated code (generated at build time)
 internal/stub/stub.bin
 internal/stub/stub_generated.go
+adipo-stub*
 
 # Test binary, built with `go test -c`
 *.test
