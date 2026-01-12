@@ -3,13 +3,12 @@ package main
 import (
 	"fmt"
 	"os"
-	"runtime"
-	"strings"
 
 	"github.com/DataDog/adipo/internal/compression"
 	"github.com/DataDog/adipo/internal/cpu"
 	"github.com/DataDog/adipo/internal/extractor"
 	"github.com/DataDog/adipo/internal/format"
+	"github.com/DataDog/adipo/internal/runner"
 	"github.com/DataDog/adipo/internal/selector"
 	"github.com/spf13/cobra"
 )
@@ -162,35 +161,8 @@ func runRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to decompress: %w", err)
 	}
 
-	// Read library path from selected binary metadata
-	libraryPath := result.SelectedBinary.GetLibraryPath()
-
-	// Prepare environment with library path prepended if specified
-	env := extractor.GetEnvironment()
-
-	if libraryPath != "" {
-		// Determine environment variable based on OS
-		var libEnvVar string
-		switch runtime.GOOS {
-		case "darwin":
-			libEnvVar = "DYLD_LIBRARY_PATH"
-		case "linux":
-			libEnvVar = "LD_LIBRARY_PATH"
-		default:
-			// Other platforms: use LD_LIBRARY_PATH as fallback
-			libEnvVar = "LD_LIBRARY_PATH"
-		}
-
-		if verbose {
-			fmt.Fprintf(os.Stderr, "Setting %s=%s\n", libEnvVar, libraryPath)
-		}
-
-		// Prepend library path to existing value (if any)
-		overrides := make(map[string]string)
-		overrides[libEnvVar] = prependLibraryPath(env, libEnvVar, libraryPath)
-
-		env = extractor.SetupEnvironment(env, overrides)
-	}
+	// Prepare environment with library path from metadata
+	env := runner.PrepareEnvironmentWithLibPath(result.SelectedBinary, verbose)
 
 	// Execute
 	opts := &extractor.ExecutionOptions{
@@ -213,22 +185,4 @@ func runRun(cmd *cobra.Command, args []string) error {
 
 	// This line should never be reached
 	return fmt.Errorf("exec returned unexpectedly")
-}
-
-// prependLibraryPath prepends newPath to the existing value of envVar in the environment
-// If envVar doesn't exist, just returns newPath
-// If envVar exists, returns "newPath:existingPath"
-func prependLibraryPath(env []string, envVar string, newPath string) string {
-	// Find existing value in environment
-	prefix := envVar + "="
-	for _, e := range env {
-		if strings.HasPrefix(e, prefix) {
-			existingPath := strings.TrimPrefix(e, prefix)
-			// Prepend new path
-			return newPath + ":" + existingPath
-		}
-	}
-
-	// Environment variable doesn't exist, return just the new path
-	return newPath
 }
