@@ -328,14 +328,9 @@ func getIncompatibilityReasons(caps *cpu.Capabilities, bin *format.BinaryMetadat
 	}
 
 	// Check version/feature requirements
-	if bin.Architecture == format.ArchX86_64 {
+	switch bin.Architecture {
+	case format.ArchX86_64, format.ArchARM64:
 		// Check if CPU version is less than required
-		if caps.Version < bin.ArchVersion {
-			reasons = append(reasons, fmt.Sprintf("CPU is %s but binary requires %s or higher",
-				caps.VersionStr, bin.ArchVersion.String(bin.Architecture)))
-		}
-	} else if bin.Architecture == format.ArchARM64 {
-		// For ARM64, check if CPU version is less than required
 		if caps.Version < bin.ArchVersion {
 			reasons = append(reasons, fmt.Sprintf("CPU is %s but binary requires %s or higher",
 				caps.VersionStr, bin.ArchVersion.String(bin.Architecture)))
