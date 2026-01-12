@@ -382,6 +382,7 @@ func (h *FormatHeader) SetDefaultExtractDir(dir string) error {
 type BinaryMetadata struct {
 	Architecture     Architecture    // CPU architecture (4 bytes)
 	ArchVersion      ArchVersion     // Architecture version (4 bytes)
+	MetadataVersion  uint32          // Metadata format version (4 bytes)
 	RequiredFeatures uint64          // Primary feature bitmask (8 bytes)
 	ExtFeatures      [4]uint64       // Extended feature bitmasks (32 bytes)
 	OriginalSize     uint64          // Uncompressed size (8 bytes)
@@ -391,7 +392,7 @@ type BinaryMetadata struct {
 	Checksum         [32]byte        // SHA-256 of uncompressed binary (32 bytes)
 	Priority         uint32          // Selection priority (4 bytes)
 	Format           BinaryFormat    // Binary format (ELF/Mach-O/PE) (4 bytes)
-	Reserved         [136]byte       // Reserved for future use (136 bytes)
+	Reserved         [132]byte       // Reserved for future use (132 bytes)
 }
 
 // MarshalBinary encodes the metadata to binary format
@@ -405,6 +406,10 @@ func (m *BinaryMetadata) MarshalBinary() ([]byte, error) {
 
 	// ArchVersion
 	binary.LittleEndian.PutUint32(buf[offset:], uint32(m.ArchVersion))
+	offset += 4
+
+	// MetadataVersion
+	binary.LittleEndian.PutUint32(buf[offset:], m.MetadataVersion)
 	offset += 4
 
 	// RequiredFeatures
@@ -467,6 +472,10 @@ func (m *BinaryMetadata) UnmarshalBinary(data []byte) error {
 	m.ArchVersion = ArchVersion(binary.LittleEndian.Uint32(data[offset:]))
 	offset += 4
 
+	// MetadataVersion
+	m.MetadataVersion = binary.LittleEndian.Uint32(data[offset:])
+	offset += 4
+
 	// RequiredFeatures
 	m.RequiredFeatures = binary.LittleEndian.Uint64(data[offset:])
 	offset += 8
@@ -506,7 +515,58 @@ func (m *BinaryMetadata) UnmarshalBinary(data []byte) error {
 	offset += 4
 
 	// Reserved
-	copy(m.Reserved[:], data[offset:offset+136])
+	copy(m.Reserved[:], data[offset:offset+132])
+
+	return nil
+}
+
+// GetLibraryPath returns the library path for this binary, or empty string if not set
+// Library path is stored in Reserved space (metadata version 1):
+// Bytes 0-1:   LibraryPathLen uint16  - Length of library path string (0 = not set)
+// Bytes 2-129: LibraryPath [128]byte  - Null-terminated absolute library path
+func (m *BinaryMetadata) GetLibraryPath() string {
+	// Read length from bytes 0-1
+	pathLen := binary.LittleEndian.Uint16(m.Reserved[0:2])
+	if pathLen == 0 || pathLen > 128 {
+		return ""
+	}
+
+	// Read path data from bytes 2:2+pathLen
+	pathBytes := m.Reserved[2 : 2+pathLen]
+
+	// Find null terminator or use full length
+	endIdx := pathLen
+	for i, b := range pathBytes {
+		if b == 0 {
+			endIdx = uint16(i)
+			break
+		}
+	}
+
+	return string(pathBytes[:endIdx])
+}
+
+// SetLibraryPath sets the library path for this binary
+// Returns error if path is too long (>128 bytes)
+func (m *BinaryMetadata) SetLibraryPath(path string) error {
+	if len(path) > 128 {
+		return errors.New("library path too long (max 128 bytes)")
+	}
+
+	// Clear the library path storage area (bytes 0-129)
+	for i := range m.Reserved[0:130] {
+		m.Reserved[i] = 0
+	}
+
+	if path == "" {
+		return nil // Leave as zero (not set)
+	}
+
+	// Write length (bytes 0-1)
+	binary.LittleEndian.PutUint16(m.Reserved[0:2], uint16(len(path)))
+
+	// Write path data (bytes 2:2+len)
+	copy(m.Reserved[2:], []byte(path))
 
 	return nil
 }

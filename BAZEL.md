@@ -101,6 +101,14 @@ adipo_fat_binary(
   - Values: Architecture specs (e.g., `x86-64-v1`, `aarch64-v8.0`)
 - `compression`: Compression algorithm (default: `zstd`)
   - Options: `zstd` (best), `lz4` (fast), `gzip` (standard), `none`
+- `lib_path`: Default library path for all binaries (optional)
+  - Absolute path prepended to `LD_LIBRARY_PATH` (Linux) or `DYLD_LIBRARY_PATH` (macOS)
+- `binary_libs`: Per-binary library paths (optional)
+  - Dictionary mapping binary basenames to their library paths
+- `auto_lib_path`: Custom template for library path generation (optional)
+  - Template variables: `{{.Arch}}`, `{{.Version}}`, `{{.ArchVersion}}`
+- `enable_auto_lib`: Enable automatic two-path library generation (default: `False`)
+  - Generates: `/opt/<arch>/lib:/usr/lib<width>/glibc-hwcaps/<arch-version>`
 
 ### Architecture Specifications
 
@@ -117,6 +125,75 @@ Format: `ARCH-VERSION[,FEATURE...]`
 - `aarch64-v8.1`: Adds atomics
 - `aarch64-v8.2`: Adds SVE
 - `aarch64-v9.0`: Adds SVE2
+
+### Library Path Support
+
+For binaries that require specific library versions, you can specify library paths that will be prepended to `LD_LIBRARY_PATH` (Linux) or `DYLD_LIBRARY_PATH` (macOS) before execution.
+
+#### Automatic Library Paths (Recommended)
+
+```python
+adipo_fat_binary(
+    name = "myapp_fat",
+    binaries = {
+        ":myapp_v1": "x86-64-v1",
+        ":myapp_v2": "x86-64-v2",
+        ":myapp_v4": "x86-64-v4",
+    },
+    enable_auto_lib = True,
+)
+
+# Results in:
+# myapp_v1 → /opt/x86-64/lib:/usr/lib64/glibc-hwcaps/x86-64-v1
+# myapp_v2 → /opt/x86-64/lib:/usr/lib64/glibc-hwcaps/x86-64-v2
+# myapp_v4 → /opt/x86-64/lib:/usr/lib64/glibc-hwcaps/x86-64-v4
+```
+
+#### Custom Template Paths
+
+```python
+adipo_fat_binary(
+    name = "myapp_fat",
+    binaries = {
+        ":myapp_v1": "x86-64-v1",
+        ":myapp_v3": "x86-64-v3",
+    },
+    auto_lib_path = "/opt/glibc-{{.Version}}/lib",
+)
+
+# Results in:
+# myapp_v1 → /opt/glibc-v1/lib
+# myapp_v3 → /opt/glibc-v3/lib
+```
+
+#### Per-Binary Library Paths
+
+```python
+adipo_fat_binary(
+    name = "myapp_fat",
+    binaries = {
+        ":myapp_v1": "x86-64-v1",
+        ":myapp_v3": "x86-64-v3",
+    },
+    binary_libs = {
+        "myapp_v1": "/custom/path/v1",
+        "myapp_v3": "/custom/path/v3",
+    },
+)
+```
+
+#### Fixed Library Path
+
+```python
+adipo_fat_binary(
+    name = "myapp_fat",
+    binaries = {
+        ":myapp_v1": "x86-64-v1",
+        ":myapp_v2": "x86-64-v2",
+    },
+    lib_path = "/opt/myapp/lib",
+)
+```
 
 ## Examples
 

@@ -55,3 +55,28 @@ adipo_fat_binary(
     compression = "zstd",
     stub = "//cmd/adipo-stub",
 )
+
+# Example with automatic library paths
+adipo_fat_binary(
+    name = "hello_fat_autolib",
+    binaries = {
+        ":hello_v1": "x86-64-v1",
+        ":hello_v2": "x86-64-v2",
+        ":hello_v3": "x86-64-v3",
+    },
+    compression = "zstd",
+    enable_auto_lib = True,
+    stub = "//cmd/adipo-stub",
+)
+
+# Example with custom library path template
+adipo_fat_binary(
+    name = "hello_fat_customlib",
+    binaries = {
+        ":hello_v1": "x86-64-v1",
+        ":hello_v3": "x86-64-v3",
+    },
+    auto_lib_path = "/opt/glibc-{{.Version}}/lib",
+    compression = "zstd",
+    stub = "//cmd/adipo-stub",
+)

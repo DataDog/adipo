@@ -17,6 +17,16 @@ def _adipo_fat_binary_impl(ctx):
     if ctx.attr.compression:
         args.add("--compress", ctx.attr.compression)
 
+    # Add library path options
+    if ctx.attr.lib_path:
+        args.add("--lib-path", ctx.attr.lib_path)
+
+    if ctx.attr.auto_lib_path:
+        args.add("--auto-lib-path", ctx.attr.auto_lib_path)
+
+    if ctx.attr.enable_auto_lib:
+        args.add("--enable-auto-lib")
+
     # Add stub binary if provided
     inputs = []
     if ctx.attr.stub:
@@ -26,11 +36,16 @@ def _adipo_fat_binary_impl(ctx):
     elif ctx.attr.no_stub:
         args.add("--no-stub")
 
-    # Add each binary with its specification
+    # Add each binary with its specification and optional library path
     for binary_target, spec in ctx.attr.binaries.items():
         binary_file = binary_target[DefaultInfo].files.to_list()[0]
         inputs.append(binary_file)
         args.add("--binary", "{}:{}".format(binary_file.path, spec))
+
+        # Add per-binary library path if specified
+        binary_name = binary_file.basename
+        if binary_name in ctx.attr.binary_libs:
+            args.add("--binary-lib", "{}:{}".format(binary_name, ctx.attr.binary_libs[binary_name]))
 
     # Run the adipo create command
     ctx.actions.run(
@@ -59,6 +74,19 @@ adipo_fat_binary = rule(
             default = "zstd",
             doc = "Compression algorithm: zstd (default), lz4, gzip, or none",
             values = ["zstd", "lz4", "gzip", "none"],
+        ),
+        "lib_path": attr.string(
+            doc = "Default library path to prepend to LD_LIBRARY_PATH for all binaries (absolute paths only)",
+        ),
+        "binary_libs": attr.string_dict(
+            doc = "Dictionary mapping binary basenames to their library paths (e.g., {'myapp_v3': '/opt/libs/v3'})",
+        ),
+        "auto_lib_path": attr.string(
+            doc = "Auto-generate library paths using template (e.g., '/opt/libs/{{.ArchVersion}}'). Template variables: {{.Arch}}, {{.Version}}, {{.ArchVersion}}",
+        ),
+        "enable_auto_lib": attr.bool(
+            default = False,
+            doc = "Enable automatic library path generation using default two-path format: /opt/<arch>/lib:/usr/lib<width>/glibc-hwcaps/<arch-version>",
         ),
         "stub": attr.label(
             allow_single_file = True,
@@ -99,6 +127,57 @@ Example:
             ":myapp_v2": "x86-64-v2",
         },
         no_stub = True,
+    )
+
+    # With automatic library paths (default two-path format):
+    adipo_fat_binary(
+        name = "myapp_fat_autolib",
+        binaries = {
+            ":myapp_v1": "x86-64-v1",
+            ":myapp_v2": "x86-64-v2",
+            ":myapp_v4": "x86-64-v4",
+        },
+        enable_auto_lib = True,
+        # Results in:
+        # myapp_v1 → /opt/x86-64/lib:/usr/lib64/glibc-hwcaps/x86-64-v1
+        # myapp_v2 → /opt/x86-64/lib:/usr/lib64/glibc-hwcaps/x86-64-v2
+        # myapp_v4 → /opt/x86-64/lib:/usr/lib64/glibc-hwcaps/x86-64-v4
+    )
+
+    # With custom template library paths:
+    adipo_fat_binary(
+        name = "myapp_fat_customlib",
+        binaries = {
+            ":myapp_v1": "x86-64-v1",
+            ":myapp_v3": "x86-64-v3",
+        },
+        auto_lib_path = "/opt/glibc-{{.Version}}/lib",
+        # Results in:
+        # myapp_v1 → /opt/glibc-v1/lib
+        # myapp_v3 → /opt/glibc-v3/lib
+    )
+
+    # With per-binary library paths:
+    adipo_fat_binary(
+        name = "myapp_fat_perlib",
+        binaries = {
+            ":myapp_v1": "x86-64-v1",
+            ":myapp_v3": "x86-64-v3",
+        },
+        binary_libs = {
+            "myapp_v1": "/custom/path/v1",
+            "myapp_v3": "/custom/path/v3",
+        },
+    )
+
+    # With fixed library path for all binaries:
+    adipo_fat_binary(
+        name = "myapp_fat_fixedlib",
+        binaries = {
+            ":myapp_v1": "x86-64-v1",
+            ":myapp_v2": "x86-64-v2",
+        },
+        lib_path = "/opt/myapp/lib",
     )
 """,
 )

@@ -157,6 +157,25 @@ func outputTable(path string, header *format.FormatHeader, metadata []*format.Bi
 
 	_ = table.Render()
 
+	// Show library paths if any are set
+	hasLibraryPaths := false
+	for _, meta := range metadata {
+		if meta.GetLibraryPath() != "" {
+			hasLibraryPaths = true
+			break
+		}
+	}
+
+	if hasLibraryPaths {
+		fmt.Println("\nLibrary Paths:")
+		for i, meta := range metadata {
+			libraryPath := meta.GetLibraryPath()
+			if libraryPath != "" {
+				fmt.Printf("  Binary %d: %s\n", i, libraryPath)
+			}
+		}
+	}
+
 	// Show preferred binary information
 	if preferredIndex >= 0 {
 		fmt.Printf("\n* Preferred binary for current CPU (%s %s)\n",
@@ -221,17 +240,21 @@ func formatMetadataForJSON(metadata []*format.BinaryMetadata) []map[string]inter
 			features = cpu.FormatARMFeatures(meta.RequiredFeatures)
 		}
 
+		libraryPath := meta.GetLibraryPath()
+
 		result[i] = map[string]interface{}{
-			"index":            i,
-			"architecture":     meta.Architecture.String(),
-			"version":          meta.ArchVersion.String(meta.Architecture),
-			"features":         features,
-			"features_mask":    fmt.Sprintf("0x%x", meta.RequiredFeatures),
-			"original_size":    meta.OriginalSize,
-			"compressed_size":  meta.CompressedSize,
-			"compression":      meta.Compression.String(),
+			"index":             i,
+			"architecture":      meta.Architecture.String(),
+			"version":           meta.ArchVersion.String(meta.Architecture),
+			"features":          features,
+			"features_mask":     fmt.Sprintf("0x%x", meta.RequiredFeatures),
+			"original_size":     meta.OriginalSize,
+			"compressed_size":   meta.CompressedSize,
+			"compression":       meta.Compression.String(),
 			"compression_ratio": float64(meta.CompressedSize) / float64(meta.OriginalSize) * 100,
-			"priority":         meta.Priority,
+			"priority":          meta.Priority,
+			"library_path":      libraryPath,
+			"metadata_version":  meta.MetadataVersion,
 		}
 	}
 

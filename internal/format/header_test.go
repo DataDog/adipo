@@ -264,3 +264,91 @@ func TestBinaryMetadataUnmarshalInvalid(t *testing.T) {
 		})
 	}
 }
+
+func TestLibraryPathGetterSetter(t *testing.T) {
+	tests := []struct {
+		name    string
+		path    string
+		wantErr bool
+	}{
+		{"empty path", "", false},
+		{"short path", "/lib", false},
+		{"max length path", strings.Repeat("a", 128), false},
+		{"too long path", strings.Repeat("a", 129), true},
+		{"typical path", "/opt/myapp/lib:/usr/local/lib", false},
+		{"default two-path format", "/opt/x86-64/lib:/usr/lib64/glibc-hwcaps/x86-64-v4", false},
+		{"long two-path format", "/opt/aarch64/lib:/usr/lib64/glibc-hwcaps/aarch64-v9.2", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			metadata := &BinaryMetadata{}
+
+			err := metadata.SetLibraryPath(tt.path)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("SetLibraryPath() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if !tt.wantErr {
+				got := metadata.GetLibraryPath()
+				if got != tt.path {
+					t.Errorf("GetLibraryPath() = %v, want %v", got, tt.path)
+				}
+			}
+		})
+	}
+}
+
+func TestLibraryPathMarshalUnmarshal(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+	}{
+		{"empty path", ""},
+		{"simple path", "/opt/test/lib"},
+		{"two-path format", "/opt/x86-64/lib:/usr/lib64/glibc-hwcaps/x86-64-v4"},
+		{"arm64 two-path", "/opt/aarch64/lib:/usr/lib64/glibc-hwcaps/aarch64-v9.0"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create original metadata
+			original := &BinaryMetadata{
+				Architecture:    ArchX86_64,
+				ArchVersion:     X86_64_V3,
+				MetadataVersion: 1,
+			}
+
+			// Set library path
+			if err := original.SetLibraryPath(tt.path); err != nil {
+				t.Fatalf("SetLibraryPath() error = %v", err)
+			}
+
+			// Marshal
+			data, err := original.MarshalBinary()
+			if err != nil {
+				t.Fatalf("MarshalBinary() error = %v", err)
+			}
+
+			// Unmarshal
+			restored := &BinaryMetadata{}
+			err = restored.UnmarshalBinary(data)
+			if err != nil {
+				t.Fatalf("UnmarshalBinary() error = %v", err)
+			}
+
+			// Verify
+			if restored.GetLibraryPath() != tt.path {
+				t.Errorf("Library path not preserved through marshal/unmarshal: got %v, want %v",
+					restored.GetLibraryPath(), tt.path)
+			}
+
+			// Also verify MetadataVersion is preserved
+			if restored.MetadataVersion != 1 {
+				t.Errorf("MetadataVersion not preserved: got %v, want %v",
+					restored.MetadataVersion, 1)
+			}
+		})
+	}
+}
