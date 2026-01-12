@@ -39,6 +39,9 @@ stub:
 clean:
 	@echo "Cleaning..."
 	rm -f $(MAIN_BIN) $(STUB_BIN)
+	rm -f adipo-stub adipo-stub-*
+	rm -f adipo-darwin-* adipo-linux-*
+	rm -rf build/
 
 ## test: Run tests
 test:
