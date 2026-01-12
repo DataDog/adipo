@@ -1,0 +1,19 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "runner",
+    srcs = ["runner.go"],
+    importpath = "github.com/DataDog/adipo/internal/runner",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/extractor",
+        "//internal/format",
+    ],
+)
+
+go_test(
+    name = "runner_test",
+    srcs = ["runner_test.go"],
+    embed = [":runner"],
+    deps = ["//internal/format"],
+)
