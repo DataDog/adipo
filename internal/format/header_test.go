@@ -66,7 +66,7 @@ func TestFormatHeaderMarshalUnmarshal(t *testing.T) {
 		StubSize:         1024,
 		StubArchitecture: ArchX86_64,
 		StubArchVersion:  X86_64_V3,
-		Reserved:         [160]byte{},
+		Reserved:         [924]byte{},
 	}
 
 	// Set stub settings in Reserved space
@@ -163,8 +163,8 @@ func TestDefaultExtractDir(t *testing.T) {
 		wantErr bool
 	}{
 		{"short path", "/tmp", false},
-		{"max length path", strings.Repeat("a", 91), false},
-		{"too long path", strings.Repeat("a", 92), true},
+		{"max length path", strings.Repeat("a", 511), false},
+		{"too long path", strings.Repeat("a", 512), true},
 		{"empty path", "", false},
 	}
 

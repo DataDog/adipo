@@ -30,7 +30,7 @@ const (
 	CompressionAlgoSize    = 4   // uint32
 	StubArchitectureSize   = 4   // uint32
 	StubArchVersionSize    = 4   // uint32
-	ReservedSize           = 160 // [160]byte
+	ReservedSize           = 924 // [924]byte
 	ChecksumSize           = 32  // [32]byte
 
 	// Header field offsets (cumulative)
@@ -46,13 +46,13 @@ const (
 	StubArchitectureOffset   = CompressionAlgoOffset + CompressionAlgoSize                             // 60
 	StubArchVersionOffset    = StubArchitectureOffset + StubArchitectureSize                           // 64
 	ReservedOffset           = StubArchVersionOffset + StubArchVersionSize                             // 68
-	ChecksumOffset           = ReservedOffset + ReservedSize                                           // 228
+	ChecksumOffset           = ReservedOffset + ReservedSize                                           // 992
 
 	// HeaderSize is the fixed size of the format header (derived from all fields)
 	HeaderSize = MagicSize + VersionSize + NumBinariesSize + StubSizeSize +
 		MetadataOffsetSize + MetadataSizeSize + DataOffsetSize +
 		FlagsSize + CompressionAlgoSize + StubArchitectureSize + StubArchVersionSize +
-		ReservedSize + ChecksumSize // 260
+		ReservedSize + ChecksumSize // 1024
 
 	// MetadataEntrySize is the fixed size of each binary metadata entry
 	MetadataEntrySize = 512
@@ -260,7 +260,7 @@ const (
 )
 
 // FormatHeader is the fixed-size header at the start of the fat binary format
-// Size: 260 bytes
+// Size: 1024 bytes (1KB)
 type FormatHeader struct {
 	Magic            [8]byte         // "ADIPOFAT"
 	Version          uint32          // Format version (currently 1)
@@ -273,7 +273,7 @@ type FormatHeader struct {
 	CompressionAlgo  CompressionAlgo // Default compression algorithm
 	StubArchitecture Architecture    // Stub binary architecture (0 if no stub)
 	StubArchVersion  ArchVersion     // Stub binary architecture version (0 if no stub)
-	Reserved         [160]byte       // Reserved for future use
+	Reserved         [924]byte       // Reserved for future use
 	Checksum         [32]byte        // SHA-256 of entire fat binary (excluding this field)
 }
 
@@ -383,9 +383,9 @@ func (h *FormatHeader) SetStubSettings(settings StubSettings) {
 
 // GetDefaultExtractDir returns the default extraction directory from the reserved space
 func (h *FormatHeader) GetDefaultExtractDir() string {
-	// Extract null-terminated string from Reserved[4:96] (92 bytes)
+	// Extract null-terminated string from Reserved[4:516] (512 bytes)
 	end := 4
-	for i := 4; i < 96 && h.Reserved[i] != 0; i++ {
+	for i := 4; i < 516 && h.Reserved[i] != 0; i++ {
 		end = i + 1
 	}
 	return string(h.Reserved[4:end])
@@ -394,13 +394,13 @@ func (h *FormatHeader) GetDefaultExtractDir() string {
 // SetDefaultExtractDir sets the default extraction directory in the reserved space
 func (h *FormatHeader) SetDefaultExtractDir(dir string) error {
 	// Clear the extraction dir area
-	for i := 4; i < 96; i++ {
+	for i := 4; i < 516; i++ {
 		h.Reserved[i] = 0
 	}
 
-	// Check if the directory path fits (92 bytes including null terminator)
-	if len(dir) > 91 {
-		return errors.New("extraction directory path too long (max 91 bytes)")
+	// Check if the directory path fits (512 bytes including null terminator)
+	if len(dir) > 511 {
+		return errors.New("extraction directory path too long (max 511 bytes)")
 	}
 
 	// Copy the directory path
@@ -410,28 +410,28 @@ func (h *FormatHeader) SetDefaultExtractDir(dir string) error {
 
 // GetDefaultExtractFile returns the default extraction file template from the reserved space
 func (h *FormatHeader) GetDefaultExtractFile() string {
-	// Extract null-terminated string from Reserved[96:160] (64 bytes)
-	end := 96
-	for i := 96; i < 160 && h.Reserved[i] != 0; i++ {
+	// Extract null-terminated string from Reserved[516:772] (256 bytes)
+	end := 516
+	for i := 516; i < 772 && h.Reserved[i] != 0; i++ {
 		end = i + 1
 	}
-	return string(h.Reserved[96:end])
+	return string(h.Reserved[516:end])
 }
 
 // SetDefaultExtractFile sets the default extraction file template in the reserved space
 func (h *FormatHeader) SetDefaultExtractFile(file string) error {
 	// Clear the extraction file area
-	for i := 96; i < 160; i++ {
+	for i := 516; i < 772; i++ {
 		h.Reserved[i] = 0
 	}
 
-	// Check if the file template fits (64 bytes including null terminator)
-	if len(file) > 63 {
-		return errors.New("extraction file template too long (max 63 bytes)")
+	// Check if the file template fits (256 bytes including null terminator)
+	if len(file) > 255 {
+		return errors.New("extraction file template too long (max 255 bytes)")
 	}
 
 	// Copy the file template
-	copy(h.Reserved[96:], []byte(file))
+	copy(h.Reserved[516:], []byte(file))
 	return nil
 }
 
