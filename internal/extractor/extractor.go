@@ -50,6 +50,7 @@ type ExecutionOptions struct {
 	Env             []string          // Environment variables
 	PreferMemory    bool              // Prefer memory extraction over disk
 	TempDir         string            // Custom temp directory (for disk extraction)
+	FileTemplate    string            // File template for deterministic extraction path
 	Verbose         bool              // Verbose output
 	CleanupOnExit   bool              // Clean up extracted file after execution
 }
@@ -71,8 +72,9 @@ func ExtractAndExecute(data []byte, name string, opts *ExecutionOptions) error {
 		opts = DefaultExecutionOptions()
 	}
 
-	// Expand tilde in TempDir
+	// Expand tilde in TempDir and FileTemplate
 	tempDir := expandTilde(opts.TempDir)
+	fileTemplate := expandTilde(opts.FileTemplate)
 
 	var extractor Extractor
 	var fallback Extractor
@@ -80,9 +82,9 @@ func ExtractAndExecute(data []byte, name string, opts *ExecutionOptions) error {
 	// Choose extraction strategy
 	if opts.PreferMemory {
 		extractor = &MemoryExtractor{}
-		fallback = &DiskExtractor{TempDir: tempDir}
+		fallback = &DiskExtractor{TempDir: tempDir, FileTemplate: fileTemplate}
 	} else {
-		extractor = &DiskExtractor{TempDir: tempDir}
+		extractor = &DiskExtractor{TempDir: tempDir, FileTemplate: fileTemplate}
 	}
 
 	// Try primary extraction method

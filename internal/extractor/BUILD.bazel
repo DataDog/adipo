@@ -8,10 +8,13 @@ go_library(
         "extractor.go",
         "memory.go",
         "memory_stub.go",
+        "template.go",
     ],
     importpath = "github.com/DataDog/adipo/internal/extractor",
     visibility = ["//:__subpackages__"],
-    deps = select({
+    deps = [
+        "//internal/format",
+    ] + select({
         "@rules_go//go/platform:aix": [
             "@org_golang_x_sys//unix",
         ],

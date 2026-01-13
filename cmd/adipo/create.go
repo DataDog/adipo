@@ -30,6 +30,8 @@ var createFlags struct {
 	noStub               bool
 	stubPath             string
 	defaultExtractDir    string
+	defaultExtractFile   string
+	defaultExecMethod    string
 	defaultCleanupOnExit bool
 	defaultVerbose       bool
 
@@ -80,6 +82,8 @@ func init() {
 	createCmd.Flags().BoolVar(&createFlags.noStub, "no-stub", false, "Create fat binary without self-extracting stub (saves space, requires extraction tool)")
 	createCmd.Flags().StringVar(&createFlags.stubPath, "stub-path", "", "Path to stub binary (overrides automatic discovery)")
 	createCmd.Flags().StringVar(&createFlags.defaultExtractDir, "default-extract-dir", "", "Default extraction directory for stub/run (supports ~ for home directory)")
+	createCmd.Flags().StringVar(&createFlags.defaultExtractFile, "default-extract-file", "", "Default extraction filename template (supports {{.Arch}}, {{.ArchTriple}}, {{.Version}}, {{.ArchVersion}})")
+	createCmd.Flags().StringVar(&createFlags.defaultExecMethod, "default-exec-method", "auto", "Default execution method: auto (try memfd, fallback to disk), memfd (memory only), disk (disk only)")
 	createCmd.Flags().BoolVar(&createFlags.defaultCleanupOnExit, "default-cleanup-on-exit", true, "Default: clean up extracted binary after execution")
 	createCmd.Flags().BoolVar(&createFlags.defaultVerbose, "default-verbose", false, "Default: show verbose output (CPU detection, selection, extraction)")
 
@@ -214,10 +218,22 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		stubSettings |= format.StubSettingCleanupOnExit
 	}
 
+	// Handle execution method preference
+	switch createFlags.defaultExecMethod {
+	case "disk":
+		stubSettings |= format.StubSettingPreferDisk
+	case "memfd":
+		// No flag needed - memfd is preferred by default when not set
+	case "auto":
+		// No flag needed - auto tries memfd first, falls back to disk
+	default:
+		return fmt.Errorf("invalid --default-exec-method: %s (must be 'auto', 'memfd', or 'disk')", createFlags.defaultExecMethod)
+	}
+
 	// Create the fat binary
 	fmt.Printf("\nWriting fat binary to: %s\n", createFlags.output)
 
-	err = format.WriteToFile(createFlags.output, stubData, entries, stubArch, stubArchVer, stubSettings, createFlags.defaultExtractDir)
+	err = format.WriteToFile(createFlags.output, stubData, entries, stubArch, stubArchVer, stubSettings, createFlags.defaultExtractDir, createFlags.defaultExtractFile)
 	if err != nil {
 		return fmt.Errorf("failed to write fat binary: %w", err)
 	}

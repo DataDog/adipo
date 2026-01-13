@@ -64,6 +64,11 @@ func (w *Writer) SetDefaultExtractDir(dir string) error {
 	return w.header.SetDefaultExtractDir(dir)
 }
 
+// SetDefaultExtractFile sets the default extraction file template
+func (w *Writer) SetDefaultExtractFile(file string) error {
+	return w.header.SetDefaultExtractFile(file)
+}
+
 // AddBinary adds a binary to the fat binary
 func (w *Writer) AddBinary(entry *BinaryEntry) error {
 	// Calculate checksum of original data
@@ -231,7 +236,7 @@ func (w *Writer) calculateAndWriteChecksum() error {
 }
 
 // WriteToFile is a convenience method to write to a file path
-func WriteToFile(path string, stubData []byte, entries []*BinaryEntry, stubArch Architecture, stubArchVer ArchVersion, stubSettings StubSettings, extractDir string) error {
+func WriteToFile(path string, stubData []byte, entries []*BinaryEntry, stubArch Architecture, stubArchVer ArchVersion, stubSettings StubSettings, extractDir string, extractFile string) error {
 	file, err := os.Create(path)
 	if err != nil {
 		return err
@@ -243,6 +248,11 @@ func WriteToFile(path string, stubData []byte, entries []*BinaryEntry, stubArch 
 	writer.SetStubSettings(stubSettings)
 	if extractDir != "" {
 		if err := writer.SetDefaultExtractDir(extractDir); err != nil {
+			return err
+		}
+	}
+	if extractFile != "" {
+		if err := writer.SetDefaultExtractFile(extractFile); err != nil {
 			return err
 		}
 	}

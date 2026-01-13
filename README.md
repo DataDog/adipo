@@ -285,13 +285,49 @@ arm64-v8.1,crc      # ARM v8.1 with CRC32
 aarch64-v9.0,sve2   # ARM v9 with SVE2
 ```
 
+### Deterministic Extraction Paths
+
+By default, fat binaries extract to random temporary directories. You can configure predictable extraction paths using templates:
+
+```bash
+# Create fat binary with deterministic extraction path
+adipo create -o app.fat \
+  --default-extract-dir ~/my-apps \
+  --default-extract-file "app-{{.ArchVersion}}" \
+  --binary app-v1:x86-64-v1 \
+  --binary app-v3:x86-64-v3
+
+# Execution extracts to: ~/my-apps/app-x86-64-v3
+./app.fat
+```
+
+**Template Variables**:
+- `{{.Arch}}` - Architecture name (x86-64, aarch64)
+- `{{.ArchTriple}}` - Architecture triple (x86_64, aarch64)
+- `{{.Version}}` - Version (v1, v2, v3, v8.0, v9.0)
+- `{{.ArchVersion}}` - Combined (x86-64-v3, aarch64-v8.0)
+
+**Execution Methods**:
+```bash
+# Force disk extraction (skip memfd)
+adipo create --default-exec-method disk -o app.fat app-v1 app-v3
+
+# Try memfd, fallback to disk (default)
+adipo create --default-exec-method auto -o app.fat app-v1 app-v3
+
+# Memory-only (fails on macOS or old kernels)
+adipo create --default-exec-method memfd -o app.fat app-v1 app-v3
+```
+
 ### Environment Variables
 
 ```bash
-ADIPO_VERBOSE=1      # Enable verbose output
-ADIPO_DEBUG=1        # Enable debug output
+ADIPO_VERBOSE=1        # Enable verbose output
+ADIPO_DEBUG=1          # Enable debug output
 ADIPO_FORCE=x86-64-v2  # Force specific version
-ADIPO_PREFER_DISK=1  # Use disk instead of memory extraction
+ADIPO_PREFER_DISK=1    # Use disk instead of memory extraction
+ADIPO_EXTRACT_DIR=~/my-apps  # Override extraction directory
+ADIPO_CLEANUP_ON_EXIT=1      # Clean up extracted file after execution
 ```
 
 ## Performance

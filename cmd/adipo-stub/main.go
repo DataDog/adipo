@@ -54,6 +54,7 @@ func main() {
 	// Read stub settings from header and merge with environment variables
 	stubSettings := header.GetStubSettings()
 	defaultExtractDir := header.GetDefaultExtractDir()
+	defaultExtractFile := header.GetDefaultExtractFile()
 
 	// Determine effective settings (env vars override header defaults)
 	verbose := false
@@ -69,6 +70,8 @@ func main() {
 	preferDisk := false
 	if envPreferDisk != "" {
 		preferDisk = envPreferDisk == "1"
+	} else {
+		preferDisk = (stubSettings & format.StubSettingPreferDisk) != 0
 	}
 
 	extractDir := envExtractDir
@@ -193,6 +196,20 @@ func main() {
 	// Prepare environment with library path from metadata
 	env := runner.PrepareEnvironmentWithLibPath(selectedBinary, verbose)
 
+	// Expand file template with selected binary's architecture/version
+	var fileTemplate string
+	if defaultExtractFile != "" {
+		fileTemplate = extractor.ExpandTemplate(
+			defaultExtractFile,
+			selectedBinary.Architecture,
+			selectedBinary.ArchVersion,
+		)
+		if verbose {
+			fmt.Fprintf(os.Stderr, "adipo stub: expanded extract file template: %s -> %s\n",
+				defaultExtractFile, fileTemplate)
+		}
+	}
+
 	// Extract and execute
 	opts := &extractor.ExecutionOptions{
 		Args:          os.Args[1:], // Pass through arguments (skip argv[0])
@@ -200,6 +217,7 @@ func main() {
 		PreferMemory:  !preferDisk,
 		Verbose:       verbose,
 		TempDir:       extractDir,
+		FileTemplate:  fileTemplate,
 		CleanupOnExit: cleanupOnExit,
 	}
 

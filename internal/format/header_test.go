@@ -163,8 +163,8 @@ func TestDefaultExtractDir(t *testing.T) {
 		wantErr bool
 	}{
 		{"short path", "/tmp", false},
-		{"max length path", strings.Repeat("a", 127), false},
-		{"too long path", strings.Repeat("a", 128), true},
+		{"max length path", strings.Repeat("a", 91), false},
+		{"too long path", strings.Repeat("a", 92), true},
 		{"empty path", "", false},
 	}
 

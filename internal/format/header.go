@@ -256,6 +256,7 @@ type StubSettings uint32
 const (
 	StubSettingVerbose       StubSettings = 1 << 0
 	StubSettingCleanupOnExit StubSettings = 1 << 1
+	StubSettingPreferDisk    StubSettings = 1 << 2 // Prefer disk extraction over memfd
 )
 
 // FormatHeader is the fixed-size header at the start of the fat binary format
@@ -382,9 +383,9 @@ func (h *FormatHeader) SetStubSettings(settings StubSettings) {
 
 // GetDefaultExtractDir returns the default extraction directory from the reserved space
 func (h *FormatHeader) GetDefaultExtractDir() string {
-	// Extract null-terminated string from Reserved[4:132] (128 bytes)
+	// Extract null-terminated string from Reserved[4:96] (92 bytes)
 	end := 4
-	for i := 4; i < 132 && h.Reserved[i] != 0; i++ {
+	for i := 4; i < 96 && h.Reserved[i] != 0; i++ {
 		end = i + 1
 	}
 	return string(h.Reserved[4:end])
@@ -393,17 +394,44 @@ func (h *FormatHeader) GetDefaultExtractDir() string {
 // SetDefaultExtractDir sets the default extraction directory in the reserved space
 func (h *FormatHeader) SetDefaultExtractDir(dir string) error {
 	// Clear the extraction dir area
-	for i := 4; i < 132; i++ {
+	for i := 4; i < 96; i++ {
 		h.Reserved[i] = 0
 	}
 
-	// Check if the directory path fits (128 bytes including null terminator)
-	if len(dir) > 127 {
-		return errors.New("extraction directory path too long (max 127 bytes)")
+	// Check if the directory path fits (92 bytes including null terminator)
+	if len(dir) > 91 {
+		return errors.New("extraction directory path too long (max 91 bytes)")
 	}
 
 	// Copy the directory path
 	copy(h.Reserved[4:], []byte(dir))
+	return nil
+}
+
+// GetDefaultExtractFile returns the default extraction file template from the reserved space
+func (h *FormatHeader) GetDefaultExtractFile() string {
+	// Extract null-terminated string from Reserved[96:160] (64 bytes)
+	end := 96
+	for i := 96; i < 160 && h.Reserved[i] != 0; i++ {
+		end = i + 1
+	}
+	return string(h.Reserved[96:end])
+}
+
+// SetDefaultExtractFile sets the default extraction file template in the reserved space
+func (h *FormatHeader) SetDefaultExtractFile(file string) error {
+	// Clear the extraction file area
+	for i := 96; i < 160; i++ {
+		h.Reserved[i] = 0
+	}
+
+	// Check if the file template fits (64 bytes including null terminator)
+	if len(file) > 63 {
+		return errors.New("extraction file template too long (max 63 bytes)")
+	}
+
+	// Copy the file template
+	copy(h.Reserved[96:], []byte(file))
 	return nil
 }
 
