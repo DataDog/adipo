@@ -1,0 +1,158 @@
+# GoReleaser configuration for adipo
+version: 2
+
+before:
+  hooks:
+    # Tidy dependencies
+    - go mod tidy
+    # Run tests
+    - go test ./...
+
+# Build configuration
+builds:
+  # Build adipo-stub for each platform
+  - id: adipo-stub
+    main: ./cmd/adipo-stub
+    binary: adipo-stub-{{ .Os }}-{{ .Arch }}
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+    flags:
+      - -trimpath
+
+  # Build hwcaps-exec (standalone)
+  - id: hwcaps-exec
+    main: ./cmd/hwcaps-exec
+    binary: hwcaps-exec
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -X 'main.version={{ .Version }}'
+      - -X 'main.commit={{ .Commit }}'
+      - -X 'main.date={{ .Date }}'
+    flags:
+      - -trimpath
+
+  # Build adipo main binary
+  - id: adipo
+    main: ./cmd/adipo
+    binary: adipo
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -X 'main.version={{ .Version }}'
+      - -X 'main.commit={{ .Commit }}'
+      - -X 'main.date={{ .Date }}'
+    flags:
+      - -trimpath
+
+# Archive configuration
+archives:
+  # Main platform-specific archives with all binaries
+  - id: platform
+    # Include adipo, hwcaps-exec, and the matching stub for this platform
+    # adipo's auto-discovery will find the stub next to it
+    name_template: "{{ .ProjectName }}-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE
+      - HWCAPS_EXEC.md
+      - LIBRARY_PATHS.md
+      - TECHNICAL.md
+      - HWCAPS.md
+
+# Checksum configuration
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+# Publishers for custom post-processing
+publishers:
+  # Create universal stubs archive with all platform stubs
+  - name: universal-stubs
+    cmd: sh -c 'mkdir -p dist/all-stubs && cp dist/adipo-stub_*/adipo-stub-* dist/all-stubs/ 2>/dev/null && tar czf dist/adipo-stubs-{{ .Version }}.tar.gz -C dist/all-stubs . && rm -rf dist/all-stubs || true'
+    env:
+      - PATH={{ .Env.PATH }}
+
+# Changelog configuration
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: Performance
+      regexp: '^.*?perf(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: Others
+      order: 999
+
+# GitHub release configuration
+release:
+  github:
+    owner: DataDog
+    name: adipo
+  draft: false
+  prerelease: auto
+  mode: replace
+  header: |
+    ## adipo {{ .Tag }}
+
+    Architecture-aware fat binaries for Go.
+
+  footer: |
+    **Full Changelog**: https://github.com/DataDog/adipo/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+    ### Installation
+
+    Download the appropriate archive for your platform:
+
+    **Linux AMD64:**
+    ```bash
+    curl -LO https://github.com/DataDog/adipo/releases/download/{{ .Tag }}/adipo-{{ .Version }}-linux-amd64.tar.gz
+    tar xzf adipo-{{ .Version }}-linux-amd64.tar.gz
+    sudo mv adipo /usr/local/bin/
+    sudo mv hwcaps-exec /usr/local/bin/
+    sudo mv adipo-stub-linux-amd64 /usr/local/bin/
+    ```
+
+    **macOS ARM64 (Apple Silicon):**
+    ```bash
+    curl -LO https://github.com/DataDog/adipo/releases/download/{{ .Tag }}/adipo-{{ .Version }}-darwin-arm64.tar.gz
+    tar xzf adipo-{{ .Version }}-darwin-arm64.tar.gz
+    sudo mv adipo /usr/local/bin/
+    sudo mv hwcaps-exec /usr/local/bin/
+    sudo mv adipo-stub-darwin-arm64 /usr/local/bin/
+    ```
+
+    ### Cross-Platform Fat Binary Creation
+
+    If you need to create fat binaries for multiple platforms, download the universal stubs archive:
+    ```bash
+    curl -LO https://github.com/DataDog/adipo/releases/download/{{ .Tag }}/adipo-stubs-{{ .Version }}.tar.gz
+    tar xzf adipo-stubs-{{ .Version }}.tar.gz
+    # Contains: adipo-stub-linux-amd64, adipo-stub-linux-arm64, adipo-stub-darwin-amd64, adipo-stub-darwin-arm64
+    ```
