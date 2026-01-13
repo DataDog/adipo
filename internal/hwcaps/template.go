@@ -3,7 +3,6 @@ package hwcaps
 import (
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 
 	"github.com/DataDog/adipo/internal/cpu"
@@ -15,14 +14,6 @@ type TemplateEvaluator struct {
 	arch    format.Architecture
 	version format.ArchVersion
 	caps    *cpu.Capabilities
-}
-
-// PathCandidate represents a potential library path with its score
-type PathCandidate struct {
-	Path     string
-	Score    int
-	Version  format.ArchVersion
-	Template string
 }
 
 // NewTemplateEvaluator creates evaluator for current CPU
@@ -39,75 +30,27 @@ func NewTemplateEvaluator(arch format.Architecture, version format.ArchVersion) 
 	}, nil
 }
 
-// EvaluateTemplates expands templates, scores them, and returns ranked usable paths
+// EvaluateTemplates expands templates and returns existing paths in priority order
 func (e *TemplateEvaluator) EvaluateTemplates(templates []string) []string {
-	var candidates []PathCandidate
+	var validPaths []string
 
 	// Get all compatible versions (includes fallback)
 	versions := e.getVersionFallbackChain()
 
-	// Expand all templates and create candidates
-	for templateIdx, template := range templates {
-		for versionIdx, ver := range versions {
+	// Expand templates in order and collect existing paths
+	// Priority: earlier templates first, then newer versions within each template
+	for _, template := range templates {
+		for _, ver := range versions {
 			path := e.expandTemplate(template, ver)
 
 			// Only add if path exists
 			if e.pathExists(path) {
-				score := e.calculateScore(templateIdx, versionIdx, template, ver)
-				candidates = append(candidates, PathCandidate{
-					Path:     path,
-					Score:    score,
-					Version:  ver,
-					Template: template,
-				})
+				validPaths = append(validPaths, path)
 			}
 		}
 	}
 
-	// Sort by score (highest first)
-	sort.Slice(candidates, func(i, j int) bool {
-		return candidates[i].Score > candidates[j].Score
-	})
-
-	// Extract paths in priority order
-	var validPaths []string
-	for _, candidate := range candidates {
-		validPaths = append(validPaths, candidate.Path)
-	}
-
 	return validPaths
-}
-
-// calculateScore assigns priority score to a path candidate
-// Higher score = higher priority in LD_LIBRARY_PATH
-func (e *TemplateEvaluator) calculateScore(templateIdx, versionIdx int, template string, version format.ArchVersion) int {
-	score := 0
-
-	// Base score: prefer templates earlier in list (user/system priority)
-	// Template 0: +1000, Template 1: +900, etc.
-	score += (10 - templateIdx) * 100
-
-	// Version match score: prefer exact version match, then close versions
-	// Exact version: +100, next version: +90, etc.
-	score += (10 - versionIdx) * 10
-
-	// Path pattern bonuses
-	if strings.Contains(template, "{{.ArchTriple}}-linux-gnu") {
-		score += 50 // Prefer Debian multiarch (more specific)
-	}
-	if strings.Contains(template, "/usr/lib64") {
-		score += 30 // Prefer lib64 over lib
-	}
-	if strings.Contains(template, "/opt/") {
-		score -= 20 // Deprioritize /opt paths
-	}
-
-	// Exact version match bonus
-	if version == e.version {
-		score += 200
-	}
-
-	return score
 }
 
 // getVersionFallbackChain returns version chain with fallbacks

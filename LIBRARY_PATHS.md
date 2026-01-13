@@ -73,77 +73,66 @@ At runtime, the fat binary:
 
 1. **Detects CPU** - Determines architecture (x86-64/ARM64) and version (v3, v9.0, etc.)
 2. **Selects Binary** - Chooses the best matching binary from the fat archive
-3. **Expands Templates** - Replaces template variables with actual values
-4. **Version Fallback** - Tries current version, then falls back to older versions
-5. **Scores Paths** - Ranks paths by template priority, version match, and path patterns
-6. **Filters Paths** - Keeps only paths that actually exist on the system
-7. **Sets Environment** - Prepends ranked paths to `LD_LIBRARY_PATH`/`DYLD_LIBRARY_PATH`
+3. **Expands Templates** - Replaces template variables with actual values for each template in order
+4. **Version Fallback** - For each template, tries current version first, then falls back to older versions
+5. **Filters Paths** - Keeps only paths that actually exist on the system
+6. **Sets Environment** - Prepends paths to `LD_LIBRARY_PATH`/`DYLD_LIBRARY_PATH` in priority order
 
 ### Example: x86-64 v3 CPU
 
-For a CPU with x86-64 v3 support, the default templates expand to:
+For a CPU with x86-64 v3 support, the default templates expand to paths in this priority order:
 
 ```
-/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v3     (Score: 1250 - Debian multiarch, exact match)
-/usr/lib64/glibc-hwcaps/x86-64-v3             (Score: 1230 - RedHat lib64, exact match)
-/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v2     (Score: 1140 - Debian multiarch, v2 fallback)
-/usr/lib64/glibc-hwcaps/x86-64-v2             (Score: 1120 - RedHat lib64, v2 fallback)
-/opt/x86-64/lib                                (Score: 1080 - Custom /opt)
+# Template 0 (Debian multiarch): /usr/lib/{{.ArchTriple}}-linux-gnu/glibc-hwcaps/{{.Version}}
+/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v3     (exact match)
+/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v2     (v2 fallback)
+/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v1     (v1 fallback)
+
+# Template 1 (RedHat lib64): /usr/lib64/glibc-hwcaps/{{.ArchVersion}}
+/usr/lib64/glibc-hwcaps/x86-64-v3             (exact match)
+/usr/lib64/glibc-hwcaps/x86-64-v2             (v2 fallback)
+/usr/lib64/glibc-hwcaps/x86-64-v1             (v1 fallback)
+
+# Template 2 (Custom /opt): /opt/{{.Arch}}/lib
+/opt/x86-64/lib                                (no version variants)
 ```
 
-Only paths that exist on disk are included. The fat binary would set:
+Only paths that exist on disk are included. For example, if only v3 and v2 paths exist:
 ```bash
-LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v3:/usr/lib64/glibc-hwcaps/x86-64-v3:...
+LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v3:/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v2:/usr/lib64/glibc-hwcaps/x86-64-v3:...
 ```
 
-### Example: ARM64 v9.4 with Fuzzy Matching
+### Example: ARM64 v9.4 with Version Fallback
 
-For ARM64 v9.4, the evaluator tries version fallback:
-- v9.4 (exact) → v9.0 → v9 → v8.9 → v8.8 → ... → v8.0
-
-If a directory only has `v9/` (without v9.4 or v9.0), it will match via the v9.0 fallback:
+For ARM64 v9.4, the evaluator tries each template with version fallback:
+- v9.4 (exact) → v9.5, v9.3, v9.2, v9.1, v9.0 → v8.9 → v8.8 → ... → v8.0
 
 ```
-/usr/lib/aarch64-linux-gnu/glibc-hwcaps/v9.0  (Score: 1240 - Debian, v9.0 fallback matches v9/)
-/usr/lib64/glibc-hwcaps/aarch64-v8.9          (Score: 1020 - RedHat, v8.9 fallback)
+# Template 0 (Debian multiarch): /usr/lib/{{.ArchTriple}}-linux-gnu/glibc-hwcaps/{{.Version}}
+/usr/lib/aarch64-linux-gnu/glibc-hwcaps/v9.4  (exact match)
+/usr/lib/aarch64-linux-gnu/glibc-hwcaps/v9.0  (v9.0 fallback)
+/usr/lib/aarch64-linux-gnu/glibc-hwcaps/v8.9  (v8.9 fallback)
+...
+
+# Template 1 (RedHat lib64): /usr/lib64/glibc-hwcaps/{{.ArchVersion}}
+/usr/lib64/glibc-hwcaps/aarch64-v9.4          (exact match)
+/usr/lib64/glibc-hwcaps/aarch64-v9.0          (v9.0 fallback)
+...
 ```
 
-This **fuzzy matching** solves the problem where binaries compiled for v9.4 can still use libraries in a v9/ directory.
+This ensures binaries compiled for v9.4 can still use libraries in v9.0 or older directories.
 
-## Scoring System
+## Priority Order
 
-Paths are scored and ranked to prefer the best matches:
+Library paths are prioritized by:
+1. **Template order** - Earlier templates in the list are evaluated first
+2. **Version match** - Within each template, exact version matches come before fallback versions
+3. **Existence** - Only paths that exist on disk are included
 
-### Scoring Factors
-
-| Factor | Points | Example |
-|--------|--------|---------|
-| Template priority | 1000, 900, 800... | Earlier templates score higher |
-| Exact version match | +200 | CPU v3 + path v3 |
-| Version fallback | +90, +80, +70... | Closer versions score higher |
-| Debian multiarch pattern | +50 | `/usr/lib/x86_64-linux-gnu/` |
-| RedHat lib64 pattern | +30 | `/usr/lib64/` |
-| /opt pattern | -20 | Deprioritize custom paths |
-
-### Scoring Examples
-
-**Scenario: x86-64 v3 CPU, template order [Debian multiarch, RedHat lib64, /opt]**
-
-```
-/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v3
-  = 1000 (template 0) + 200 (exact) + 50 (multiarch) = 1250
-
-/usr/lib64/glibc-hwcaps/x86-64-v3
-  = 900 (template 1) + 200 (exact) + 30 (lib64) = 1130
-
-/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v2
-  = 1000 (template 0) + 90 (v2 fallback) + 50 (multiarch) = 1140
-
-/opt/x86-64/lib
-  = 800 (template 2) - 20 (deprioritize) = 780
-```
-
-Result: Paths returned in order `[v3 multiarch, v2 multiarch, v3 lib64, v2 lib64, /opt]`
+For example, with default templates on x86-64 v3:
+1. All Debian multiarch paths (template 0): v3, v2, v1
+2. All RedHat lib64 paths (template 1): v3, v2, v1
+3. Custom /opt paths (template 2)
 
 ## Platform Support
 
@@ -253,6 +242,6 @@ go test -tags=integration ./internal/hwcaps/...
 
 - Templates are stored in binary metadata (132-byte reserved field)
 - Each template is length-prefixed for efficient parsing
-- Version fallback uses explicit ARM64 version list (v9.5 → v8.0)
-- Scoring algorithm mirrors binary selection logic
+- Version fallback uses explicit ARM64 version list (format.ARM64VersionFallbackOrder)
+- Paths are collected in template order, then version fallback order
 - Template evaluation happens at runtime, not build time

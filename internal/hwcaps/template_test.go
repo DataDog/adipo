@@ -184,86 +184,6 @@ func TestVersionFallbackChain(t *testing.T) {
 	}
 }
 
-// TestScoring tests the path scoring mechanism
-func TestScoring(t *testing.T) {
-	tests := []struct {
-		name         string
-		arch         format.Architecture
-		version      format.ArchVersion
-		templateIdx  int
-		versionIdx   int
-		template     string
-		testVersion  format.ArchVersion
-		expectHigher int // Expected score should be > this value
-	}{
-		{
-			name:         "exact version match bonus",
-			arch:         format.ArchX86_64,
-			version:      format.X86_64_V3,
-			templateIdx:  0,
-			versionIdx:   0,
-			template:     "/usr/lib64/glibc-hwcaps/{{.ArchVersion}}",
-			testVersion:  format.X86_64_V3, // Exact match
-			expectHigher: 1000,             // Should get exact match bonus
-		},
-		{
-			name:         "Debian multiarch bonus",
-			arch:         format.ArchX86_64,
-			version:      format.X86_64_V3,
-			templateIdx:  0,
-			versionIdx:   0,
-			template:     "/usr/lib/{{.ArchTriple}}-linux-gnu/glibc-hwcaps/{{.Version}}",
-			testVersion:  format.X86_64_V3,
-			expectHigher: 1200, // Template + version + multiarch bonus
-		},
-		{
-			name:         "lib64 bonus",
-			arch:         format.ArchX86_64,
-			version:      format.X86_64_V3,
-			templateIdx:  1,
-			versionIdx:   0,
-			template:     "/usr/lib64/glibc-hwcaps/{{.ArchVersion}}",
-			testVersion:  format.X86_64_V3,
-			expectHigher: 1000, // Template + version + lib64 bonus
-		},
-		{
-			name:         "template priority matters",
-			arch:         format.ArchARM64,
-			version:      format.ARM64_V8_2,
-			templateIdx:  0, // First template
-			versionIdx:   0,
-			template:     "/usr/lib/{{.ArchTriple}}-linux-gnu/glibc-hwcaps/{{.Version}}",
-			testVersion:  format.ARM64_V8_2,
-			expectHigher: 1200,
-		},
-		{
-			name:         "version fallback penalty",
-			arch:         format.ArchX86_64,
-			version:      format.X86_64_V3,
-			templateIdx:  0,
-			versionIdx:   1, // Second version in fallback chain
-			template:     "/usr/lib64/glibc-hwcaps/{{.ArchVersion}}",
-			testVersion:  format.X86_64_V2, // Fallback version
-			expectHigher: 900,              // Lower than exact match
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			evaluator := &TemplateEvaluator{
-				arch:    tt.arch,
-				version: tt.version,
-			}
-
-			score := evaluator.calculateScore(tt.templateIdx, tt.versionIdx, tt.template, tt.testVersion)
-
-			if score <= tt.expectHigher {
-				t.Errorf("calculateScore() = %d, want > %d", score, tt.expectHigher)
-			}
-		})
-	}
-}
-
 // TestTemplateEvaluationWithDirectories tests template evaluation with real directories
 func TestTemplateEvaluationWithDirectories(t *testing.T) {
 	// Create temporary directory structure
@@ -427,13 +347,19 @@ func TestPathOrdering(t *testing.T) {
 		t.Fatalf("expected 4 paths, got %d", len(validPaths))
 	}
 
-	// First should be Debian multiarch v3 (template 0, version 0, multiarch bonus, exact match)
-	if validPaths[0] != paths[0] {
-		t.Errorf("path[0] = %s, want %s", validPaths[0], paths[0])
+	// Paths are prioritized by template order first, then version fallback
+	// Template 0 (Debian multiarch): v3, then v2
+	// Template 1 (RedHat): v3, then v2
+	expected := []string{
+		paths[0], // Template 0, v3
+		paths[2], // Template 0, v2
+		paths[1], // Template 1, v3
+		paths[3], // Template 1, v2
 	}
 
-	// Second should be RedHat v3 (template 1, version 0, lib64 bonus, exact match)
-	if validPaths[1] != paths[1] {
-		t.Errorf("path[1] = %s, want %s", validPaths[1], paths[1])
+	for i, want := range expected {
+		if validPaths[i] != want {
+			t.Errorf("path[%d] = %s, want %s", i, validPaths[i], want)
+		}
 	}
 }
