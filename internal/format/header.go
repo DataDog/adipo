@@ -608,6 +608,9 @@ func (m *BinaryMetadata) UnmarshalBinary(data []byte) error {
 // Bytes N+3-M:   Template2 string
 // ...
 func (m *BinaryMetadata) GetLibraryPathTemplates() []string {
+	// Maximum reasonable template length (paths are typically < 256 chars)
+	const maxTemplateLen = 512
+
 	// Read template count
 	templateCount := binary.LittleEndian.Uint16(m.Reserved[0:2])
 	if templateCount == 0 || templateCount > 10 { // Sanity check
@@ -627,15 +630,26 @@ func (m *BinaryMetadata) GetLibraryPathTemplates() []string {
 		templateLen := binary.LittleEndian.Uint16(m.Reserved[offset : offset+2])
 		offset += 2
 
-		// Check we have room for template data
-		if offset+int(templateLen) > len(m.Reserved) || templateLen == 0 {
+		// Validate template length
+		if templateLen == 0 || templateLen > maxTemplateLen {
+			break // Invalid length, stop parsing
+		}
+
+		// Check we have room for template data (with overflow protection)
+		if templateLen > uint16(len(m.Reserved)-offset) {
+			break // Would overflow
+		}
+
+		// Additional check: verify offset + templateLen won't exceed bounds
+		endOffset := offset + int(templateLen)
+		if endOffset > len(m.Reserved) || endOffset < offset { // Check for integer overflow
 			break
 		}
 
 		// Read template string
-		templateBytes := m.Reserved[offset : offset+int(templateLen)]
+		templateBytes := m.Reserved[offset:endOffset]
 		templates = append(templates, string(templateBytes))
-		offset += int(templateLen)
+		offset = endOffset
 	}
 
 	return templates
