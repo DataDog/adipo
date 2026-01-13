@@ -139,21 +139,23 @@ func (r *Reader) parse() error {
 }
 
 // validateMagicMarker checks if the magic marker at the given offset is valid
-// by verifying the header that follows it
+// by verifying the header that follows it. This reduces false positives when
+// the magic bytes appear in legitimate data (e.g., embedded resources).
 func (r *Reader) validateMagicMarker(offset int64) bool {
 	// Seek to position after standalone magic marker (at start of header)
 	if _, err := r.input.Seek(offset+MagicSize, io.SeekStart); err != nil {
 		return false
 	}
 
-	// Read enough bytes to check magic, version, numBinaries, and stub size
-	bytesNeeded := MagicSize + VersionSize + NumBinariesSize + StubSizeSize
+	// Read enough bytes to check critical header fields
+	bytesNeeded := MagicSize + VersionSize + NumBinariesSize + StubSizeSize +
+		MetadataOffsetSize + MetadataSizeSize
 	buf := make([]byte, bytesNeeded)
 	if _, err := io.ReadFull(r.input, buf); err != nil {
 		return false
 	}
 
-	// Check that header also starts with magic marker
+	// Check that header also starts with magic marker (double verification)
 	if !bytes.Equal(buf[MagicOffset:MagicOffset+MagicSize], MagicMarker[:]) {
 		return false
 	}
@@ -164,15 +166,43 @@ func (r *Reader) validateMagicMarker(offset int64) bool {
 		return false
 	}
 
-	// Check NumBinaries (should be > 0 and reasonable)
+	// Check NumBinaries (should be > 0 and within limits)
 	numBinaries := binary.LittleEndian.Uint32(buf[NumBinariesOffset:NumBinariesOffset+NumBinariesSize])
-	if numBinaries == 0 || numBinaries > 1000 {
+	if numBinaries == 0 || numBinaries > uint32(MaxNumBinaries) {
 		return false
 	}
 
-	// Check StubSize matches offset
+	// Check StubSize matches offset (critical validation for uniqueness)
 	stubSize := binary.LittleEndian.Uint64(buf[StubSizeOffset:StubSizeOffset+StubSizeSize])
-	return int64(stubSize) == offset
+	if int64(stubSize) != offset {
+		return false
+	}
+
+	// Validate stub size is within reasonable bounds
+	const minStubSize = 100 * 1024
+	const maxStubSize = 100 * 1024 * 1024
+	if stubSize < minStubSize || stubSize > maxStubSize {
+		return false
+	}
+
+	// Check MetadataOffset and MetadataSize are sensible
+	metadataOffset := binary.LittleEndian.Uint64(buf[MetadataOffsetOffset:MetadataOffsetOffset+MetadataOffsetSize])
+	metadataSize := binary.LittleEndian.Uint64(buf[MetadataSizeOffset:MetadataSizeOffset+MetadataSizeSize])
+
+	// Metadata should come after stub + header
+	expectedMinMetadataOffset := uint64(offset) + uint64(MagicSize) + uint64(HeaderSize)
+	if metadataOffset < expectedMinMetadataOffset {
+		return false
+	}
+
+	// Metadata size should match number of binaries
+	expectedMetadataSize := uint64(numBinaries) * uint64(MetadataEntrySize)
+	if metadataSize != expectedMetadataSize {
+		return false
+	}
+
+	// All checks passed - this is likely the real magic marker
+	return true
 }
 
 // findMagicMarker searches for the magic marker in the file
