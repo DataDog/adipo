@@ -3,6 +3,7 @@ load("@rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "adipo_lib",
     srcs = [
+        "analyze.go",
         "cpu.go",
         "create.go",
         "extract.go",
@@ -13,6 +14,7 @@ go_library(
     importpath = "github.com/DataDog/adipo/cmd/adipo",
     visibility = ["//visibility:private"],
     deps = [
+        "//internal/analyzer",
         "//internal/compression",
         "//internal/cpu",
         "//internal/elf",

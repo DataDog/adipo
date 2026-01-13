@@ -392,9 +392,9 @@ func TestLibraryPathTemplatesMarshalUnmarshal(t *testing.T) {
 			}
 
 			// Verify metadata version is set correctly
-			if restored.MetadataVersion != LibPathMetadataVersion {
+			if restored.MetadataVersion != MetadataVersionV1 {
 				t.Errorf("MetadataVersion = %v, want %v",
-					restored.MetadataVersion, LibPathMetadataVersion)
+					restored.MetadataVersion, MetadataVersionV1)
 			}
 		})
 	}

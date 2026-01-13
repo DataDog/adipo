@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "analyzer",
+    srcs = [
+        "analyzer.go",
+        "arm64_features.go",
+        "disassembler.go",
+        "march.go",
+        "statistics.go",
+        "x86_features.go",
+    ],
+    importpath = "github.com/DataDog/adipo/internal/analyzer",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cpu",
+        "//internal/elf",
+        "//internal/features",
+        "//internal/format",
+        "//internal/macho",
+    ],
+)

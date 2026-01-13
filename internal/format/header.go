@@ -401,9 +401,9 @@ func (h *FormatHeader) SetDefaultExtractDir(dir string) error {
 	return nil
 }
 
-// Library path template metadata version
+// Metadata version constants
 const (
-	LibPathMetadataVersion = 1 // Template-based library paths
+	MetadataVersionV1 = 1 // Template-based library paths
 )
 
 // BinaryMetadata contains metadata for a single embedded binary
@@ -624,7 +624,7 @@ func (m *BinaryMetadata) SetLibraryPathTemplates(templates []string) error {
 	}
 
 	// Set metadata version
-	m.MetadataVersion = LibPathMetadataVersion
+	m.MetadataVersion = MetadataVersionV1
 
 	// Clear Reserved
 	for i := range m.Reserved {

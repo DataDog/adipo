@@ -33,6 +33,7 @@ func NewTemplateEvaluator(arch format.Architecture, version format.ArchVersion) 
 // EvaluateTemplates expands templates and returns existing paths in priority order
 func (e *TemplateEvaluator) EvaluateTemplates(templates []string) []string {
 	var validPaths []string
+	seen := make(map[string]bool)
 
 	// Get all compatible versions (includes fallback)
 	versions := e.getVersionFallbackChain()
@@ -43,9 +44,10 @@ func (e *TemplateEvaluator) EvaluateTemplates(templates []string) []string {
 		for _, template := range templates {
 			path := e.expandTemplate(template, ver)
 
-			// Only add if path exists
-			if e.pathExists(path) {
+			// Only add if path exists and not already seen
+			if !seen[path] && e.pathExists(path) {
 				validPaths = append(validPaths, path)
+				seen[path] = true
 			}
 		}
 	}

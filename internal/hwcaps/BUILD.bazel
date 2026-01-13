@@ -4,6 +4,7 @@ go_library(
     name = "hwcaps",
     srcs = [
         "scanner.go",
+        "selector.go",
         "template.go",
         "templates.go",
     ],
@@ -22,7 +23,10 @@ go_test(
         "template_test.go",
     ],
     embed = [":hwcaps"],
-    deps = ["//internal/format"],
+    deps = [
+        "//internal/cpu",
+        "//internal/format",
+    ],
 )
 
 go_test(
