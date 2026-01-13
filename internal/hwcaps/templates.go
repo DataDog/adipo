@@ -12,17 +12,12 @@ package hwcaps
 //	{{.ArchVersion}} = "x86-64-v3" or "aarch64-v8.2" (full identifier)
 func GetDefaultTemplates() []string {
 	return []string{
-		// Debian/Ubuntu multiarch (priority: exact version)
-		"/usr/lib/{{.ArchTriple}}-linux-gnu/glibc-hwcaps/{{.ArchVersion}}",
-
-		// Debian/Ubuntu multiarch (fuzzy: major version only, for ARM64 v9 → v9.x)
+		// Debian/Ubuntu multiarch with fallback version support
+		// Supports both exact (v9.4) and fuzzy (v9) matching for ARM64
 		"/usr/lib/{{.ArchTriple}}-linux-gnu/glibc-hwcaps/{{.Version}}",
 
 		// RedHat/Fedora lib64
 		"/usr/lib64/glibc-hwcaps/{{.ArchVersion}}",
-
-		// Generic lib
-		"/usr/lib/glibc-hwcaps/{{.ArchVersion}}",
 
 		// Custom /opt installations
 		"/opt/{{.Arch}}/lib",

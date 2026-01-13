@@ -157,21 +157,25 @@ func outputTable(path string, header *format.FormatHeader, metadata []*format.Bi
 
 	_ = table.Render()
 
-	// Show library paths if any are set
+	// Show library path templates if any are set
 	hasLibraryPaths := false
 	for _, meta := range metadata {
-		if meta.GetLibraryPath() != "" {
+		templates := meta.GetLibraryPathTemplates()
+		if len(templates) > 0 {
 			hasLibraryPaths = true
 			break
 		}
 	}
 
 	if hasLibraryPaths {
-		fmt.Println("\nLibrary Paths:")
+		fmt.Println("\nLibrary Path Templates:")
 		for i, meta := range metadata {
-			libraryPath := meta.GetLibraryPath()
-			if libraryPath != "" {
-				fmt.Printf("  Binary %d: %s\n", i, libraryPath)
+			templates := meta.GetLibraryPathTemplates()
+			if len(templates) > 0 {
+				fmt.Printf("  Binary %d:\n", i)
+				for _, template := range templates {
+					fmt.Printf("    - %s\n", template)
+				}
 			}
 		}
 	}

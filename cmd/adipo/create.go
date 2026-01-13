@@ -26,6 +26,10 @@ var createFlags struct {
 	defaultExtractDir    string
 	defaultCleanupOnExit bool
 	defaultVerbose       bool
+
+	// Library path template flags
+	enableLibPath   bool     // Enable automatic library path configuration
+	libPathTemplate []string // Custom library path templates
 }
 
 var createCmd = &cobra.Command{
@@ -72,6 +76,13 @@ func init() {
 	createCmd.Flags().StringVar(&createFlags.defaultExtractDir, "default-extract-dir", "", "Default extraction directory for stub/run (supports ~ for home directory)")
 	createCmd.Flags().BoolVar(&createFlags.defaultCleanupOnExit, "default-cleanup-on-exit", true, "Default: clean up extracted binary after execution")
 	createCmd.Flags().BoolVar(&createFlags.defaultVerbose, "default-verbose", false, "Default: show verbose output (CPU detection, selection, extraction)")
+
+	// Library path template flags
+	createCmd.Flags().BoolVar(&createFlags.enableLibPath, "enable-lib-path", false, "Enable automatic library path configuration (disabled by default)")
+	createCmd.Flags().StringArrayVar(&createFlags.libPathTemplate, "lib-path-template", []string{},
+		"Custom library path template (can be repeated). Uses default templates if enabled but not specified. "+
+			"Template variables: {{.Arch}} (x86-64, aarch64), {{.ArchTriple}} (x86_64, aarch64), "+
+			"{{.Version}} (v3, v8.2), {{.ArchVersion}} (x86-64-v3, aarch64-v8.2)")
 
 	if err := createCmd.MarkFlagRequired("output"); err != nil {
 		panic(err)
@@ -442,15 +453,25 @@ func processBinary(input *InputBinary, compAlgo format.CompressionAlgo, level in
 		Format:           binaryFormat,
 	}
 
-	// Store default library path templates in metadata
-	// Templates are evaluated at runtime on the target system
-	templates := hwcaps.GetDefaultTemplates()
+	// Store library path templates in metadata if enabled
+	if createFlags.enableLibPath {
+		var templates []string
 
-	if err := metadata.SetLibraryPathTemplates(templates); err != nil {
-		return nil, fmt.Errorf("failed to store library path templates: %w", err)
+		// Use custom templates if specified, otherwise use defaults
+		if len(createFlags.libPathTemplate) > 0 {
+			templates = createFlags.libPathTemplate
+		} else {
+			templates = hwcaps.GetDefaultTemplates()
+		}
+
+		if err := metadata.SetLibraryPathTemplates(templates); err != nil {
+			return nil, fmt.Errorf("failed to store library path templates: %w", err)
+		}
+
+		fmt.Printf("  Library path: %d templates stored for runtime evaluation\n", len(templates))
+	} else {
+		fmt.Printf("  Library path: disabled (use --enable-lib-path to enable)\n")
 	}
-
-	fmt.Printf("  Library path: %d templates stored for runtime evaluation\n", len(templates))
 
 	entry := &format.BinaryEntry{
 		Data:         compressed,

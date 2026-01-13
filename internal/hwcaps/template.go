@@ -133,21 +133,38 @@ func (e *TemplateEvaluator) getVersionFallbackChain() []format.ArchVersion {
 
 // getARMFallbackChain handles ARM64 version fallback logic
 func (e *TemplateEvaluator) getARMFallbackChain() []format.ArchVersion {
-	var versions []format.ArchVersion
-
-	// Add current version (e.g., v9.4)
-	versions = append(versions, e.version)
-
-	// Add .0 variant if not already .0 (v9.4 → v9.0)
-	if e.version%10 != 0 {
-		baseVersion := (e.version / 10) * 10
-		versions = append(versions, baseVersion)
+	// Define all ARM64 versions in fallback order (newest to oldest)
+	// Note: enum values are non-sequential, so we list them explicitly
+	allVersions := []format.ArchVersion{
+		format.ARM64_V9_5,
+		format.ARM64_V9_4,
+		format.ARM64_V9_3,
+		format.ARM64_V9_2,
+		format.ARM64_V9_1,
+		format.ARM64_V9_0,
+		format.ARM64_V8_9,
+		format.ARM64_V8_8,
+		format.ARM64_V8_7,
+		format.ARM64_V8_6,
+		format.ARM64_V8_5,
+		format.ARM64_V8_4,
+		format.ARM64_V8_3,
+		format.ARM64_V8_2,
+		format.ARM64_V8_1,
+		format.ARM64_V8_0,
 	}
 
-	// Add all previous versions down to v8.0
-	current := e.version
-	for v := current - 1; v >= format.ARM64_V8_0; v-- {
-		versions = append(versions, v)
+	var versions []format.ArchVersion
+
+	// Find current version in the list and include it plus all older versions
+	foundCurrent := false
+	for _, v := range allVersions {
+		if v == e.version {
+			foundCurrent = true
+		}
+		if foundCurrent {
+			versions = append(versions, v)
+		}
 	}
 
 	return versions

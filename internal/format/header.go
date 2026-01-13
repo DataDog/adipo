@@ -406,7 +406,7 @@ type BinaryMetadata struct {
 	Priority         uint32          // Selection priority (4 bytes)
 	Format           BinaryFormat    // Binary format (ELF/Mach-O/PE) (4 bytes)
 	LibPathFlags     uint32          // Library path flags (4 bytes)
-	Reserved         [128]byte       // Reserved for future use (128 bytes, was 132)
+	Reserved         [132]byte       // Reserved for future use (132 bytes)
 }
 
 // MarshalBinary encodes the metadata to binary format
