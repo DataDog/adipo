@@ -138,6 +138,11 @@ func (r *Reader) parse() error {
 		if meta.Format > FormatPE {
 			return fmt.Errorf("binary %d: invalid format value: %d", i, meta.Format)
 		}
+
+		// Validate compression algorithm enum
+		if meta.Compression > CompressionLZ4 {
+			return fmt.Errorf("binary %d: invalid compression algorithm: %d", i, meta.Compression)
+		}
 	}
 
 	return nil
