@@ -25,23 +25,6 @@ builds:
     flags:
       - -trimpath
 
-  # Build hwcaps-exec (standalone)
-  - id: hwcaps-exec
-    main: ./cmd/hwcaps-exec
-    binary: hwcaps-exec
-    goos:
-      - linux
-      - darwin
-    goarch:
-      - amd64
-      - arm64
-    ldflags:
-      - -X 'main.version={{ .Version }}'
-      - -X 'main.commit={{ .Commit }}'
-      - -X 'main.date={{ .Date }}'
-    flags:
-      - -trimpath
-
   # Build adipo main binary
   - id: adipo
     main: ./cmd/adipo
@@ -63,13 +46,12 @@ builds:
 archives:
   # Main platform-specific archives with all binaries
   - id: platform
-    # Include adipo, hwcaps-exec, and the matching stub for this platform
+    # Include adipo and the matching stub for this platform
     # adipo's auto-discovery will find the stub next to it
     name_template: "{{ .ProjectName }}-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
     files:
       - README.md
       - LICENSE
-      - HWCAPS_EXEC.md
       - LIBRARY_PATHS.md
       - TECHNICAL.md
       - HWCAPS.md
@@ -135,7 +117,6 @@ release:
     curl -LO https://github.com/DataDog/adipo/releases/download/{{ .Tag }}/adipo-{{ .Version }}-linux-amd64.tar.gz
     tar xzf adipo-{{ .Version }}-linux-amd64.tar.gz
     sudo mv adipo /usr/local/bin/
-    sudo mv hwcaps-exec /usr/local/bin/
     sudo mv adipo-stub-linux-amd64 /usr/local/bin/
     ```
 
@@ -144,7 +125,6 @@ release:
     curl -LO https://github.com/DataDog/adipo/releases/download/{{ .Tag }}/adipo-{{ .Version }}-darwin-arm64.tar.gz
     tar xzf adipo-{{ .Version }}-darwin-arm64.tar.gz
     sudo mv adipo /usr/local/bin/
-    sudo mv hwcaps-exec /usr/local/bin/
     sudo mv adipo-stub-darwin-arm64 /usr/local/bin/
     ```
 
