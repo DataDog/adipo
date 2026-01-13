@@ -133,34 +133,12 @@ func (e *TemplateEvaluator) getVersionFallbackChain() []format.ArchVersion {
 
 // getARMFallbackChain handles ARM64 version fallback logic
 func (e *TemplateEvaluator) getARMFallbackChain() []format.ArchVersion {
-	// Define all ARM64 versions in fallback order (newest to oldest)
-	// Note: enum values are non-sequential, so we list them explicitly
-	// IMPORTANT: When adding new ARM64 versions (e.g., ARM64_V9_6), update this list!
-	// Also update: internal/format/header.go String() method
-	allVersions := []format.ArchVersion{
-		format.ARM64_V9_5,
-		format.ARM64_V9_4,
-		format.ARM64_V9_3,
-		format.ARM64_V9_2,
-		format.ARM64_V9_1,
-		format.ARM64_V9_0,
-		format.ARM64_V8_9,
-		format.ARM64_V8_8,
-		format.ARM64_V8_7,
-		format.ARM64_V8_6,
-		format.ARM64_V8_5,
-		format.ARM64_V8_4,
-		format.ARM64_V8_3,
-		format.ARM64_V8_2,
-		format.ARM64_V8_1,
-		format.ARM64_V8_0,
-	}
-
 	var versions []format.ArchVersion
 
+	// Use the canonical ARM64 version ordering from the format package
 	// Find current version in the list and include it plus all older versions
 	foundCurrent := false
-	for _, v := range allVersions {
+	for _, v := range format.ARM64VersionFallbackOrder {
 		if v == e.version {
 			foundCurrent = true
 		}

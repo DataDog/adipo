@@ -105,6 +105,30 @@ const (
 	ARM64_V9_5    ArchVersion = 16
 )
 
+// ARM64VersionFallbackOrder defines the canonical ordering of ARM64 versions from newest to oldest.
+// This is used for version fallback chains (e.g., v9.4 can fall back to v9.0, v8.9, etc.).
+// IMPORTANT: When adding new ARM64 versions (e.g., ARM64_V9_6), add them to this list in the correct position.
+var ARM64VersionFallbackOrder = []ArchVersion{
+	ARM64_V9_5,
+	ARM64_V9_4,
+	ARM64_V9_3,
+	ARM64_V9_2,
+	ARM64_V9_1,
+	ARM64_V9_0,
+	ARM64_V8_9,
+	ARM64_V8_8,
+	ARM64_V8_7,
+	ARM64_V8_6,
+	ARM64_V8_5,
+	ARM64_V8_4,
+	ARM64_V8_3,
+	ARM64_V8_2,
+	ARM64_V8_1,
+	ARM64_V8_0,
+}
+
+// String returns the version string for the given architecture.
+// IMPORTANT: When adding new ARM64 versions, update both ARM64VersionFallbackOrder and this String() method.
 func (v ArchVersion) String(arch Architecture) string {
 	switch arch {
 	case ArchX86_64:
