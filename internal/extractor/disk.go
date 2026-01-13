@@ -63,19 +63,24 @@ func (d *DiskExtractor) Extract(data []byte, name string) (string, func(), error
 
 	// If FileTemplate is provided, use it for deterministic path
 	if d.FileTemplate != "" {
+		// FileTemplate must be a filename only (no directories) for security
+		// This prevents TOCTOU vulnerabilities and path traversal attacks
+		if strings.ContainsRune(d.FileTemplate, filepath.Separator) ||
+			strings.ContainsRune(d.FileTemplate, '/') { // Check both native and forward slash
+			return "", nil, fmt.Errorf("FileTemplate must be a filename only (no directories): %q", d.FileTemplate)
+		}
+
 		// Use template as the filename directly (already expanded by caller)
 		tempFile = filepath.Join(tempDir, d.FileTemplate)
 		extractDir = tempDir
 
-		// Validate path to prevent directory traversal
+		// Validate path to prevent directory traversal (defense in depth)
 		if err := ValidatePath(tempDir, tempFile); err != nil {
 			return "", nil, fmt.Errorf("invalid extraction path: %w", err)
 		}
 
-		// Ensure parent directory exists
-		if err := os.MkdirAll(filepath.Dir(tempFile), 0755); err != nil {
-			return "", nil, fmt.Errorf("failed to create directory: %w", err)
-		}
+		// No directory creation needed - file goes directly in tempDir
+		// This eliminates TOCTOU race conditions with symlink attacks
 	} else {
 		// Create random temp directory with secure permissions (legacy behavior)
 		extractDir, err = os.MkdirTemp(tempDir, "adipo-*")
