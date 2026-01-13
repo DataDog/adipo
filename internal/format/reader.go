@@ -79,6 +79,18 @@ func (r *Reader) parse() error {
 		return ErrUnsupportedVersion
 	}
 
+	// Validate stub size to detect corrupted files
+	const minStubSize = 100 * 1024      // 100 KB minimum
+	const maxStubSize = 100 * 1024 * 1024 // 100 MB maximum
+	if r.header.StubSize < minStubSize {
+		return fmt.Errorf("stub size (%d bytes) is too small (minimum: %d bytes)",
+			r.header.StubSize, minStubSize)
+	}
+	if r.header.StubSize > maxStubSize {
+		return fmt.Errorf("stub size (%d bytes) exceeds maximum allowed (%d bytes)",
+			r.header.StubSize, maxStubSize)
+	}
+
 	// Validate number of binaries to prevent excessive memory allocation
 	if r.header.NumBinaries == 0 {
 		return fmt.Errorf("invalid number of binaries: 0")
