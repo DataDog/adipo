@@ -265,64 +265,102 @@ func TestBinaryMetadataUnmarshalInvalid(t *testing.T) {
 	}
 }
 
-func TestLibraryPathGetterSetter(t *testing.T) {
+func TestLibraryPathTemplates(t *testing.T) {
 	tests := []struct {
-		name    string
-		path    string
-		wantErr bool
+		name      string
+		templates []string
+		wantErr   bool
 	}{
-		{"empty path", "", false},
-		{"short path", "/lib", false},
-		{"max length path", strings.Repeat("a", 128), false},
-		{"too long path", strings.Repeat("a", 129), true},
-		{"typical path", "/opt/myapp/lib:/usr/local/lib", false},
-		{"default two-path format", "/opt/x86-64/lib:/usr/lib64/glibc-hwcaps/x86-64-v4", false},
-		{"long two-path format", "/opt/aarch64/lib:/usr/lib64/glibc-hwcaps/aarch64-v9.2", false},
+		{
+			name:      "empty templates",
+			templates: []string{},
+			wantErr:   true, // SetLibraryPathTemplates rejects empty arrays
+		},
+		{
+			name:      "single template",
+			templates: []string{"/usr/lib/{{.ArchTriple}}-linux-gnu/glibc-hwcaps/{{.Version}}"},
+			wantErr:   false,
+		},
+		{
+			name: "multiple templates",
+			templates: []string{
+				"/usr/lib/{{.ArchTriple}}-linux-gnu/glibc-hwcaps/{{.Version}}",
+				"/usr/lib64/glibc-hwcaps/{{.ArchVersion}}",
+				"/opt/{{.Arch}}/lib",
+			},
+			wantErr: false,
+		},
+		{
+			name: "templates that exceed available space",
+			templates: []string{
+				strings.Repeat("a", 200),
+				strings.Repeat("b", 200),
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			metadata := &BinaryMetadata{}
+			metadata := &BinaryMetadata{
+				Architecture: ArchX86_64,
+				ArchVersion:  X86_64_V3,
+			}
 
-			err := metadata.SetLibraryPath(tt.path)
+			err := metadata.SetLibraryPathTemplates(tt.templates)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("SetLibraryPath() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("SetLibraryPathTemplates() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
 			if !tt.wantErr {
-				got := metadata.GetLibraryPath()
-				if got != tt.path {
-					t.Errorf("GetLibraryPath() = %v, want %v", got, tt.path)
+				got := metadata.GetLibraryPathTemplates()
+				if len(got) != len(tt.templates) {
+					t.Errorf("GetLibraryPathTemplates() length = %v, want %v", len(got), len(tt.templates))
+					return
+				}
+				for i, template := range tt.templates {
+					if got[i] != template {
+						t.Errorf("GetLibraryPathTemplates()[%d] = %v, want %v", i, got[i], template)
+					}
 				}
 			}
 		})
 	}
 }
 
-func TestLibraryPathMarshalUnmarshal(t *testing.T) {
+func TestLibraryPathTemplatesMarshalUnmarshal(t *testing.T) {
 	tests := []struct {
-		name string
-		path string
+		name      string
+		templates []string
 	}{
-		{"empty path", ""},
-		{"simple path", "/opt/test/lib"},
-		{"two-path format", "/opt/x86-64/lib:/usr/lib64/glibc-hwcaps/x86-64-v4"},
-		{"arm64 two-path", "/opt/aarch64/lib:/usr/lib64/glibc-hwcaps/aarch64-v9.0"},
+		{
+			name: "single template",
+			templates: []string{
+				"/usr/lib/{{.ArchTriple}}-linux-gnu/glibc-hwcaps/{{.Version}}",
+			},
+		},
+		{
+			name: "multiple templates",
+			templates: []string{
+				"/usr/lib/{{.ArchTriple}}-linux-gnu/glibc-hwcaps/{{.Version}}",
+				"/usr/lib64/glibc-hwcaps/{{.ArchVersion}}",
+				"/opt/{{.Arch}}/lib",
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create original metadata
 			original := &BinaryMetadata{
-				Architecture:    ArchX86_64,
-				ArchVersion:     X86_64_V3,
-				MetadataVersion: 1,
+				Architecture: ArchX86_64,
+				ArchVersion:  X86_64_V3,
 			}
 
-			// Set library path
-			if err := original.SetLibraryPath(tt.path); err != nil {
-				t.Fatalf("SetLibraryPath() error = %v", err)
+			// Set library path templates
+			if err := original.SetLibraryPathTemplates(tt.templates); err != nil {
+				t.Fatalf("SetLibraryPathTemplates() error = %v", err)
 			}
 
 			// Marshal
@@ -338,16 +376,25 @@ func TestLibraryPathMarshalUnmarshal(t *testing.T) {
 				t.Fatalf("UnmarshalBinary() error = %v", err)
 			}
 
-			// Verify
-			if restored.GetLibraryPath() != tt.path {
-				t.Errorf("Library path not preserved through marshal/unmarshal: got %v, want %v",
-					restored.GetLibraryPath(), tt.path)
+			// Verify templates are preserved
+			gotTemplates := restored.GetLibraryPathTemplates()
+			if len(gotTemplates) != len(tt.templates) {
+				t.Errorf("Templates not preserved: got %d templates, want %d",
+					len(gotTemplates), len(tt.templates))
+				return
 			}
 
-			// SetLibraryPath uses legacy v0 format, so MetadataVersion should be 0
-			if restored.MetadataVersion != 0 {
-				t.Errorf("MetadataVersion should be 0 for legacy format: got %v, want %v",
-					restored.MetadataVersion, 0)
+			for i, template := range tt.templates {
+				if gotTemplates[i] != template {
+					t.Errorf("Template[%d] not preserved: got %v, want %v",
+						i, gotTemplates[i], template)
+				}
+			}
+
+			// Verify metadata version is set correctly
+			if restored.MetadataVersion != LibPathMetadataVersion {
+				t.Errorf("MetadataVersion = %v, want %v",
+					restored.MetadataVersion, LibPathMetadataVersion)
 			}
 		})
 	}

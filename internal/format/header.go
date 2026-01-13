@@ -401,17 +401,9 @@ func (h *FormatHeader) SetDefaultExtractDir(dir string) error {
 	return nil
 }
 
-// Metadata version constants
+// Library path template metadata version
 const (
-	MetadataVersionV0 = 0 // Legacy: library path in Reserved[0:130]
-	MetadataVersionV1 = 1 // New: library path templates in Reserved with length-prefixed format
-)
-
-// Library path flags
-const (
-	LibPathFlagNone     = 0
-	LibPathFlagTemplate = 1 << 0 // Indicates template strings (v1+ only)
-	LibPathFlagMulti    = 1 << 1 // Multiple paths stored (v1+ only)
+	LibPathMetadataVersion = 1 // Template-based library paths
 )
 
 // BinaryMetadata contains metadata for a single embedded binary
@@ -566,65 +558,10 @@ func (m *BinaryMetadata) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-// GetLibraryPath returns the library path for this binary, or empty string if not set
-// Library path is stored in Reserved space (metadata version 1):
-// Bytes 0-1:   LibraryPathLen uint16  - Length of library path string (0 = not set)
-// Bytes 2-129: LibraryPath [128]byte  - Null-terminated absolute library path
-func (m *BinaryMetadata) GetLibraryPath() string {
-	// Read length from bytes 0-1
-	pathLen := binary.LittleEndian.Uint16(m.Reserved[0:2])
-	if pathLen == 0 || pathLen > 128 {
-		return ""
-	}
-
-	// Read path data from bytes 2:2+pathLen
-	pathBytes := m.Reserved[2 : 2+pathLen]
-
-	// Find null terminator or use full length
-	endIdx := pathLen
-	for i, b := range pathBytes {
-		if b == 0 {
-			endIdx = uint16(i)
-			break
-		}
-	}
-
-	return string(pathBytes[:endIdx])
-}
-
-// SetLibraryPath sets the library path for this binary (legacy v0 format)
-// Returns error if path is too long (>128 bytes)
-func (m *BinaryMetadata) SetLibraryPath(path string) error {
-	if len(path) > 128 {
-		return errors.New("library path too long (max 128 bytes)")
-	}
-
-	// Set to v0 format for backward compatibility
-	m.MetadataVersion = MetadataVersionV0
-	m.LibPathFlags = LibPathFlagNone
-
-	// Clear the library path storage area (bytes 0-127)
-	for i := range m.Reserved {
-		m.Reserved[i] = 0
-	}
-
-	if path == "" {
-		return nil // Leave as zero (not set)
-	}
-
-	// Write length (bytes 0-1)
-	binary.LittleEndian.PutUint16(m.Reserved[0:2], uint16(len(path)))
-
-	// Write path data (bytes 2:2+len)
-	copy(m.Reserved[2:], []byte(path))
-
-	return nil
-}
-
-// GetLibraryPathTemplates retrieves library path templates (v1 format)
-// Returns empty slice if not set or if using legacy v0 format
+// GetLibraryPathTemplates retrieves library path templates from metadata
+// Returns empty slice if not set
 //
-// Storage format in Reserved[128]:
+// Storage format in Reserved:
 // Bytes 0-1:   TemplateCount (uint16)
 // Bytes 2-3:   Template1Length (uint16)
 // Bytes 4-N:   Template1 string
@@ -632,11 +569,6 @@ func (m *BinaryMetadata) SetLibraryPath(path string) error {
 // Bytes N+3-M:   Template2 string
 // ...
 func (m *BinaryMetadata) GetLibraryPathTemplates() []string {
-	// Only v1+ supports templates
-	if m.MetadataVersion < MetadataVersionV1 {
-		return nil
-	}
-
 	// Read template count
 	templateCount := binary.LittleEndian.Uint16(m.Reserved[0:2])
 	if templateCount == 0 || templateCount > 10 { // Sanity check
@@ -670,8 +602,8 @@ func (m *BinaryMetadata) GetLibraryPathTemplates() []string {
 	return templates
 }
 
-// SetLibraryPathTemplates stores library path templates (v1 format)
-// Returns error if templates don't fit in Reserved space (128 bytes)
+// SetLibraryPathTemplates stores library path templates in metadata
+// Returns error if templates don't fit in Reserved space
 func (m *BinaryMetadata) SetLibraryPathTemplates(templates []string) error {
 	if len(templates) == 0 {
 		return errors.New("no templates provided")
@@ -691,9 +623,8 @@ func (m *BinaryMetadata) SetLibraryPathTemplates(templates []string) error {
 		return errors.New("templates too large for metadata storage")
 	}
 
-	// Set to v1 format
-	m.MetadataVersion = MetadataVersionV1
-	m.LibPathFlags = LibPathFlagTemplate | LibPathFlagMulti
+	// Set metadata version
+	m.MetadataVersion = LibPathMetadataVersion
 
 	// Clear Reserved
 	for i := range m.Reserved {
