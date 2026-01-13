@@ -170,6 +170,7 @@ func expandTemplate(template string, arch format.Architecture, version format.Ar
 	var paths []string
 
 	baseArch := getBaseArchString(arch)
+	archTriple := getArchTripleString(arch)
 	versions := getAllVersions(arch, version)
 
 	for _, v := range versions {
@@ -177,6 +178,7 @@ func expandTemplate(template string, arch format.Architecture, version format.Ar
 		archVersion := getArchString(arch, v)
 
 		path := template
+		path = strings.ReplaceAll(path, "{{.ArchTriple}}", archTriple)
 		path = strings.ReplaceAll(path, "{{.Arch}}", baseArch)
 		path = strings.ReplaceAll(path, "{{.Version}}", versionStr)
 		path = strings.ReplaceAll(path, "{{.ArchVersion}}", archVersion)
@@ -289,6 +291,18 @@ func getBaseArchString(arch format.Architecture) string {
 	switch arch {
 	case format.ArchX86_64:
 		return "x86-64"
+	case format.ArchARM64:
+		return "aarch64"
+	default:
+		return "unknown"
+	}
+}
+
+// getArchTripleString returns the architecture triple (for Debian multiarch)
+func getArchTripleString(arch format.Architecture) string {
+	switch arch {
+	case format.ArchX86_64:
+		return "x86_64"
 	case format.ArchARM64:
 		return "aarch64"
 	default:
