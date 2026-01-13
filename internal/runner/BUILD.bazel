@@ -8,6 +8,7 @@ go_library(
     deps = [
         "//internal/extractor",
         "//internal/format",
+        "//internal/hwcaps",
     ],
 )
 

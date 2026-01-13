@@ -1,0 +1,37 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "hwcaps",
+    srcs = [
+        "scanner.go",
+        "template.go",
+        "templates.go",
+    ],
+    importpath = "github.com/DataDog/adipo/internal/hwcaps",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cpu",
+        "//internal/format",
+    ],
+)
+
+go_test(
+    name = "hwcaps_test",
+    srcs = [
+        "scanner_test.go",
+        "template_test.go",
+    ],
+    embed = [":hwcaps"],
+    deps = ["//internal/format"],
+)
+
+go_test(
+    name = "hwcaps_integration_test",
+    srcs = ["template_integration_test.go"],
+    embed = [":hwcaps"],
+    tags = ["integration"],
+    deps = [
+        "//internal/cpu",
+        "//internal/format",
+    ],
+)

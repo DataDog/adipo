@@ -135,6 +135,8 @@ func (e *TemplateEvaluator) getVersionFallbackChain() []format.ArchVersion {
 func (e *TemplateEvaluator) getARMFallbackChain() []format.ArchVersion {
 	// Define all ARM64 versions in fallback order (newest to oldest)
 	// Note: enum values are non-sequential, so we list them explicitly
+	// IMPORTANT: When adding new ARM64 versions (e.g., ARM64_V9_6), update this list!
+	// Also update: internal/format/header.go String() method
 	allVersions := []format.ArchVersion{
 		format.ARM64_V9_5,
 		format.ARM64_V9_4,
