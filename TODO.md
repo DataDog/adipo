@@ -2,14 +2,6 @@
 
 ## High Priority
 
-### bazel integration
-
-- rules to compile a go binary with multiple GOAMD and then bundle it with adipo
-- tests for the rules inside the repo
-
-### Config file
-- To simplify calls (in particular when running) add /etc/adipo.conf and ~/.local/config/adipo.conf support
-
 ### Library Path Support for Sub-Architecture Optimizations
 - **Issue**: When using optimized shared libraries (e.g., `libfoo.so.v3` built with AVX2), the selected binary needs to know where to find them
 - **Solution**: Adjust `LD_LIBRARY_PATH` based on selected CPU version
@@ -41,7 +33,6 @@
 - Detect Apple Silicon (M1/M2/M3) vs Intel
 - Handle universal binaries interaction
 - Memory extraction: Use `mmap` instead of `memfd_create`
-- Think about lipo integration
 
 ### Windows Support (PE Format)
 - Parse PE headers
@@ -55,9 +46,21 @@
 
 ## Format Enhancements
 
+### Binary Deduplication
+- **Issue**: Same binary compiled with different arch flags often produces identical output (e.g., x86-64-v1/v2/v3 from same source)
+- **Solution**: Detect duplicates via SHA-256 checksum during creation, store once and reference
+- **Format**: Add `ReferenceIndex` field to BinaryMetadata (use 0xFFFFFFFF for non-references)
+- **Benefits**: Massive space savings - 4 identical binaries → 1 stored + 3 references (only ~512 bytes each for metadata)
+- **Implementation**:
+  - Create: Build checksum map, detect duplicates, store reference index
+  - Read: Check if metadata is reference, load from referenced index
+  - Inspect: Show "→ references binary X" for duplicates
+
 ### Format Version 2.0
 - **Shared Compression Dictionary**: Use a shared dictionary for better compression of similar binaries
+- **Delta Compression**: Store deltas between similar binaries instead of full copies
 - **Streaming Decompression**: Support partial decompression for faster startup
+- **Digital Signatures**: Sign binaries for verification
 - **Metadata Extensions**: Add build info, dependencies, etc.
 
 ### Multi-Container Support
@@ -65,12 +68,60 @@
 - Example: ELF + Mach-O + PE all in one fat binary
 - Automatic format detection
 
+## Advanced Features
+
+### Auto-Building
+```bash
+# Build all versions automatically from source
+adipo auto-build --source myapp.c --output myapp.fat
+```
+- Detect optimal compiler flags for each version
+- Automatically build v1, v2, v3, v4 variants
+- Include ARM variants if cross-compilers available
+
+### Progressive Download Support
+- Network-aware fat binaries
+- Download only the needed binary on first run
+- Cache locally for subsequent runs
+- Useful for container images over slow networks
+
+### JIT Version Selection
+- Support for JIT-compiled languages
+- Select optimized LLVM IR or bytecode based on CPU
+- Example: Multiple LLVM IR versions, compile on first run
+
+### Docker Integration
+```bash
+# Create Docker image with fat binary
+adipo docker-build --source Dockerfile --output myapp:latest
+
+# Automatically creates multi-arch image with fat binaries
+```
+
+### Kubernetes Operator
+- Automatically inject fat binaries into pods
+- DaemonSet to detect node capabilities
+- Mutating webhook to replace single binaries with fat binaries
+
 ## Performance Optimizations
+
+### Stub Size Reduction
+- Current: ~2-3 MB
+- Goal: < 1 MB
+- Techniques:
+  - Strip unnecessary dependencies
+  - Use TinyGo for stub
+  - UPX compression of stub (trade startup time for size)
 
 ### Faster Decompression
 - Use multiple cores for decompression
 - Pre-decompress during idle time (speculative)
 - Memory-mapped decompression
+
+### Caching
+- Cache decompressed binaries on disk
+- Invalidate cache on binary change
+- XDG cache directory support
 
 ## Developer Experience
 
@@ -78,6 +129,16 @@
 - Suggest missing features when no binary matches
 - Explain why a binary was selected
 - Show performance comparison of available binaries
+
+### Profiling Support
+- Built-in profiling mode to compare versions
+- `adipo benchmark app.fat` - run all versions and compare
+- Generate reports showing performance differences
+
+### IDE Integration
+- VSCode extension for inspecting fat binaries
+- Show which binary would be selected on current machine
+- Visualize binary selection scoring
 
 ## Testing & Quality
 
@@ -111,12 +172,80 @@
 - Deployment patterns
 - Monitoring and observability
 
+### Video Tutorials
+- Introduction to adipo
+- Building fat binaries
+- Deploying in Kubernetes
+- Advanced use cases
+
 ## Ecosystem
 
 ### Package Manager Integration
+- apt/yum repository with fat binaries
 - Homebrew formula
 - Snap package
 - Flatpak package
 
+### CI/CD Integration
+- GitHub Actions for building fat binaries
+- GitLab CI templates
+- CircleCI orb
+- Jenkins plugin
+
 ### Monitoring Integration
+- Metrics export (Prometheus)
 - Log which binary was selected
+- Performance metrics per version
+- Integration with APM tools (DataDog, New Relic)
+
+## Nice to Have
+
+### GUI Tool
+- Graphical tool for inspecting fat binaries
+- Drag-and-drop to create fat binaries
+- Visual diff between binary versions
+
+### Web Service
+- Upload binaries, get fat binary back
+- SaaS for building fat binaries
+- No local tooling required
+
+### Language Bindings
+- Python library for creating/inspecting fat binaries
+- Rust library
+- Node.js library
+- Go library (for programmatic use)
+
+### Plugin System
+- Custom binary selection algorithms
+- Custom compression algorithms
+- Custom extraction methods
+- Hooks for pre/post execution
+
+## Research Ideas
+
+### Machine Learning Binary Selection
+- Learn optimal binary selection from runtime metrics
+- Predict best binary based on workload characteristics
+- Adaptive selection based on observed performance
+
+### Binary Specialization
+- Generate specialized binaries on-the-fly based on actual usage
+- Profile-guided optimization at runtime
+- Hot code path detection and recompilation
+
+### Zero-Copy Execution
+- Execute directly from compressed binary
+- Decompress pages on-demand (similar to mmap)
+- Reduce memory footprint
+
+---
+
+## Contributing
+
+Have an idea? Open an issue or PR! We'd love to hear your suggestions.
+
+**Priority Guidelines**:
+- 🔴 High: Blocking issues or widely requested features
+- 🟡 Medium: Nice to have, improves UX
+- 🟢 Low: Future enhancements, research ideas
