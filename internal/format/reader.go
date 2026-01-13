@@ -79,6 +79,15 @@ func (r *Reader) parse() error {
 		return ErrUnsupportedVersion
 	}
 
+	// Validate number of binaries to prevent excessive memory allocation
+	if r.header.NumBinaries == 0 {
+		return fmt.Errorf("invalid number of binaries: 0")
+	}
+	if r.header.NumBinaries > MaxNumBinaries {
+		return fmt.Errorf("number of binaries (%d) exceeds maximum allowed (%d)",
+			r.header.NumBinaries, MaxNumBinaries)
+	}
+
 	// Read metadata table
 	if _, err := r.input.Seek(int64(r.header.MetadataOffset), io.SeekStart); err != nil {
 		return fmt.Errorf("failed to seek to metadata offset %d: %w", r.header.MetadataOffset, err)
@@ -94,6 +103,23 @@ func (r *Reader) parse() error {
 		r.metadata[i] = &BinaryMetadata{}
 		if err := r.metadata[i].UnmarshalBinary(metaData); err != nil {
 			return err
+		}
+
+		// Validate sizes to prevent integer overflow and decompression bombs
+		meta := r.metadata[i]
+		if meta.CompressedSize > MaxCompressedSize {
+			return fmt.Errorf("binary %d: compressed size (%d bytes) exceeds maximum allowed (%d bytes)",
+				i, meta.CompressedSize, MaxCompressedSize)
+		}
+		if meta.OriginalSize > MaxOriginalSize {
+			return fmt.Errorf("binary %d: original size (%d bytes) exceeds maximum allowed (%d bytes)",
+				i, meta.OriginalSize, MaxOriginalSize)
+		}
+		if meta.CompressedSize == 0 {
+			return fmt.Errorf("binary %d: invalid compressed size: 0", i)
+		}
+		if meta.OriginalSize == 0 {
+			return fmt.Errorf("binary %d: invalid original size: 0", i)
 		}
 	}
 
@@ -282,6 +308,15 @@ func (r *Reader) GetBinaryData(index int) ([]byte, error) {
 	}
 
 	meta := r.metadata[index]
+
+	// Double-check size limits before allocation (defense in depth)
+	if meta.CompressedSize > MaxCompressedSize {
+		return nil, fmt.Errorf("compressed size (%d bytes) exceeds maximum allowed (%d bytes)",
+			meta.CompressedSize, MaxCompressedSize)
+	}
+	if meta.CompressedSize == 0 {
+		return nil, fmt.Errorf("invalid compressed size: 0")
+	}
 
 	// Seek to binary data
 	if _, err := r.input.Seek(int64(meta.DataOffset), io.SeekStart); err != nil {

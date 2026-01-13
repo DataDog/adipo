@@ -8,8 +8,10 @@ package compression
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 
+	"github.com/DataDog/adipo/internal/format"
 	"github.com/pierrec/lz4/v4"
 )
 
@@ -52,6 +54,15 @@ func (c *LZ4Compressor) Compress(input []byte, level int) ([]byte, error) {
 
 // Decompress decompresses lz4 data
 func (c *LZ4Compressor) Decompress(input []byte, expectedSize uint64) ([]byte, error) {
+	// Validate expected size to prevent decompression bombs
+	if expectedSize > format.MaxOriginalSize {
+		return nil, fmt.Errorf("expected decompression size (%d bytes) exceeds maximum allowed (%d bytes)",
+			expectedSize, format.MaxOriginalSize)
+	}
+	if expectedSize == 0 {
+		return nil, fmt.Errorf("invalid expected size: 0")
+	}
+
 	reader := lz4.NewReader(bytes.NewReader(input))
 
 	// Pre-allocate based on expected size

@@ -56,6 +56,11 @@ const (
 
 	// MetadataEntrySize is the fixed size of each binary metadata entry
 	MetadataEntrySize = 512
+
+	// Safety limits to prevent integer overflow and decompression bombs
+	MaxNumBinaries    = 10000                // Maximum number of binaries in a fat binary
+	MaxCompressedSize = 10 * 1024 * 1024 * 1024 // 10 GB maximum compressed size per binary
+	MaxOriginalSize   = 10 * 1024 * 1024 * 1024 // 10 GB maximum uncompressed size per binary
 )
 
 // Architecture represents the CPU architecture

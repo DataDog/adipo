@@ -7,6 +7,9 @@
 package compression
 
 import (
+	"fmt"
+
+	"github.com/DataDog/adipo/internal/format"
 	"github.com/klauspost/compress/zstd"
 )
 
@@ -37,6 +40,15 @@ func (c *ZstdCompressor) Compress(input []byte, level int) ([]byte, error) {
 
 // Decompress decompresses zstd data
 func (c *ZstdCompressor) Decompress(input []byte, expectedSize uint64) ([]byte, error) {
+	// Validate expected size to prevent decompression bombs
+	if expectedSize > format.MaxOriginalSize {
+		return nil, fmt.Errorf("expected decompression size (%d bytes) exceeds maximum allowed (%d bytes)",
+			expectedSize, format.MaxOriginalSize)
+	}
+	if expectedSize == 0 {
+		return nil, fmt.Errorf("invalid expected size: 0")
+	}
+
 	decoder, err := zstd.NewReader(nil)
 	if err != nil {
 		return nil, err
