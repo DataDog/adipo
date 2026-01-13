@@ -1,21 +1,9 @@
-.PHONY: all build stub clean test install help integration-test-linux integration-test-macos
+.PHONY: all build build-all clean test install help lint fmt vet check release-snapshot release-local
 
 # Build variables
 VERSION ?= dev
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-LDFLAGS := -X 'main.version=$(VERSION)' -X 'main.commit=$(COMMIT)' -X 'main.date=$(DATE)'
-STUB_LDFLAGS := -s -w
-
-# Go build flags
-GOFLAGS := -trimpath
-STUBFLAGS := $(GOFLAGS) -ldflags="$(STUB_LDFLAGS)"
-MAINFLAGS := $(GOFLAGS) -ldflags="$(LDFLAGS)"
-
-# Output paths
-STUB_BIN := internal/stub/stub.bin
-MAIN_BIN := adipo
 
 # Default target
 all: build
@@ -25,46 +13,87 @@ help:
 	@echo 'Usage:'
 	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' | sed -e 's/^/ /'
 
-## build: Build the adipo binary
+## build: Build for current platform (fast, uses GoReleaser)
 build:
-	@echo "Building adipo..."
-	go build $(MAINFLAGS) -o $(MAIN_BIN) ./cmd/adipo
+	@echo "Building for current platform..."
+	@goreleaser build --snapshot --clean --single-target --id adipo --id hwcaps-exec --id adipo-stub
+	@echo ""
+	@echo "Binaries built in dist/ directory:"
+	@ls -lh dist/adipo_*/adipo dist/hwcaps-exec_*/hwcaps-exec dist/adipo-stub_*/adipo-stub-* 2>/dev/null || true
 
-## stub: Build the self-extracting stub binary for current host
-stub:
-	@echo "Building stub binary for current host..."
-	go build $(STUBFLAGS) -o $(STUB_BIN) ./cmd/adipo-stub
+## build-all: Build for all platforms (uses GoReleaser)
+build-all:
+	@echo "Building for all platforms..."
+	@goreleaser build --snapshot --clean
+	@echo ""
+	@echo "All binaries built in dist/ directory"
 
-## hwcaps-exec: Build the hwcaps-exec standalone binary
-hwcaps-exec:
-	@echo "Building hwcaps-exec..."
-	go build $(MAINFLAGS) -o hwcaps-exec ./cmd/hwcaps-exec
+## release-snapshot: Test full release process locally (no publish)
+release-snapshot:
+	@echo "Testing release process..."
+	@goreleaser release --snapshot --clean
+	@$(MAKE) create-universal-stubs
+	@echo ""
+	@echo "Release artifacts in dist/ directory"
+	@ls -lh dist/*.tar.gz dist/*.txt 2>/dev/null || true
 
-## clean: Remove built binaries
+## create-universal-stubs: Create universal stubs archive with all platforms
+create-universal-stubs:
+	@echo "Creating universal stubs archive..."
+	@mkdir -p dist/all-stubs
+	@cp dist/adipo-stub_*/adipo-stub-* dist/all-stubs/ 2>/dev/null || true
+	@if [ -n "$$(ls -A dist/all-stubs 2>/dev/null)" ]; then \
+		VERSION=$$(ls dist/*.tar.gz 2>/dev/null | head -1 | sed 's/.*adipo-//' | sed 's/-darwin.*//' | sed 's/-linux.*//'); \
+		tar czf dist/adipo-stubs-$${VERSION}.tar.gz -C dist/all-stubs .; \
+		rm -rf dist/all-stubs; \
+		echo "Created dist/adipo-stubs-$${VERSION}.tar.gz"; \
+	else \
+		echo "No stub binaries found in dist/"; \
+		rm -rf dist/all-stubs; \
+	fi
+
+## release-local: Create release locally with current version (for testing)
+release-local:
+	@echo "Creating local release (no git tag required)..."
+	@goreleaser release --snapshot --clean --skip=publish
+	@echo ""
+	@echo "Release artifacts in dist/ directory"
+
+## clean: Remove built binaries and dist directory
 clean:
 	@echo "Cleaning..."
-	rm -f $(MAIN_BIN) $(STUB_BIN)
-	rm -f adipo-stub adipo-stub-*
-	rm -f adipo-darwin-* adipo-linux-*
-	rm -f hwcaps-exec hwcaps-exec-*
-	rm -rf build/
+	@rm -rf dist/
+	@rm -f adipo hwcaps-exec adipo-stub adipo-stub-*
+	@rm -f adipo-darwin-* adipo-linux-*
+	@rm -f hwcaps-exec-darwin-* hwcaps-exec-linux-*
 
 ## test: Run tests
 test:
 	@echo "Running tests..."
-	go test -v ./...
+	@go test -v ./...
 
 ## test-coverage: Run tests with coverage
 test-coverage:
 	@echo "Running tests with coverage..."
-	go test -v -coverprofile=coverage.out ./...
-	go tool cover -html=coverage.out -o coverage.html
+	@go test -v -coverprofile=coverage.out ./...
+	@go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report: coverage.html"
 
-## install: Install adipo to GOPATH/bin
+## install: Install from source (dev build, not using GoReleaser)
 install:
-	@echo "Installing adipo..."
-	go install $(MAINFLAGS) ./cmd/adipo
+	@echo "Installing from source..."
+	@go install -ldflags="-X 'main.version=$(VERSION)' -X 'main.commit=$(COMMIT)' -X 'main.date=$(DATE)'" ./cmd/adipo
+	@go install -ldflags="-X 'main.version=$(VERSION)' -X 'main.commit=$(COMMIT)' -X 'main.date=$(DATE)'" ./cmd/hwcaps-exec
+	@go install -ldflags="-s -w" ./cmd/adipo-stub
+	@echo "Installed to $(shell go env GOPATH)/bin/"
+
+## install-snapshot: Install from latest snapshot build
+install-snapshot: build
+	@echo "Installing from snapshot..."
+	@cp dist/adipo_$(shell go env GOOS)_$(shell go env GOARCH)*/adipo $(shell go env GOPATH)/bin/
+	@cp dist/hwcaps-exec_$(shell go env GOOS)_$(shell go env GOARCH)*/hwcaps-exec $(shell go env GOPATH)/bin/
+	@cp dist/adipo-stub_$(shell go env GOOS)_$(shell go env GOARCH)*/adipo-stub-* $(shell go env GOPATH)/bin/
+	@echo "Installed to $(shell go env GOPATH)/bin/"
 
 ## lint: Run golangci-lint
 lint:
@@ -79,42 +108,26 @@ lint:
 ## fmt: Format Go code
 fmt:
 	@echo "Formatting code..."
-	go fmt ./...
+	@go fmt ./...
 
 ## vet: Run go vet
 vet:
 	@echo "Running go vet..."
-	go vet ./...
+	@go vet ./...
+
+## check: Run all checks (fmt, vet, lint, test)
+check: fmt vet test lint
+	@echo "All checks passed!"
 
 ## mod-tidy: Tidy go.mod
 mod-tidy:
 	@echo "Tidying go.mod..."
-	go mod tidy
+	@go mod tidy
 
-## build-all-arch: Build for multiple OS/arch combinations
-build-all-arch:
-	@echo "Building for multiple architectures..."
-	@echo "Building adipo..."
-	@GOOS=linux GOARCH=amd64 go build $(MAINFLAGS) -o $(MAIN_BIN)-linux-amd64 ./cmd/adipo
-	@GOOS=linux GOARCH=arm64 go build $(MAINFLAGS) -o $(MAIN_BIN)-linux-arm64 ./cmd/adipo
-	@GOOS=darwin GOARCH=amd64 go build $(MAINFLAGS) -o $(MAIN_BIN)-darwin-amd64 ./cmd/adipo
-	@GOOS=darwin GOARCH=arm64 go build $(MAINFLAGS) -o $(MAIN_BIN)-darwin-arm64 ./cmd/adipo
-	@echo "Building hwcaps-exec..."
-	@GOOS=linux GOARCH=amd64 go build $(MAINFLAGS) -o hwcaps-exec-linux-amd64 ./cmd/hwcaps-exec
-	@GOOS=linux GOARCH=arm64 go build $(MAINFLAGS) -o hwcaps-exec-linux-arm64 ./cmd/hwcaps-exec
-	@GOOS=darwin GOARCH=amd64 go build $(MAINFLAGS) -o hwcaps-exec-darwin-amd64 ./cmd/hwcaps-exec
-	@GOOS=darwin GOARCH=arm64 go build $(MAINFLAGS) -o hwcaps-exec-darwin-arm64 ./cmd/hwcaps-exec
-	@echo "Built: $(MAIN_BIN)-{linux,darwin}-{amd64,arm64} and hwcaps-exec-{linux,darwin}-{amd64,arm64}"
-
-## stub-all-arch: Build stub for multiple architectures (for distribution)
-stub-all-arch:
-	@echo "Building stub for multiple architectures..."
-	@mkdir -p build/stub
-	@GOOS=linux GOARCH=amd64 go build $(STUBFLAGS) -o build/stub/adipo-stub-linux-amd64 ./cmd/adipo-stub
-	@GOOS=linux GOARCH=arm64 go build $(STUBFLAGS) -o build/stub/adipo-stub-linux-arm64 ./cmd/adipo-stub
-	@GOOS=darwin GOARCH=amd64 go build $(STUBFLAGS) -o build/stub/adipo-stub-darwin-amd64 ./cmd/adipo-stub
-	@GOOS=darwin GOARCH=arm64 go build $(STUBFLAGS) -o build/stub/adipo-stub-darwin-arm64 ./cmd/adipo-stub
-	@echo "Built stubs in build/stub/"
+## goreleaser-check: Validate GoReleaser configuration
+goreleaser-check:
+	@echo "Checking GoReleaser configuration..."
+	@goreleaser check
 
 ## integration-test-linux: Build and run integration test for Linux binaries
 integration-test-linux:
@@ -142,9 +155,9 @@ integration-test-macos:
 integration-test-impl:
 	@echo "Running $(TEST_NAME) integration test..."
 	@echo "Building adipo for host platform..."
-	@go build $(MAINFLAGS) -o $(MAIN_BIN) ./cmd/adipo
-	@echo "Building stub for host platform..."
-	@go build $(STUBFLAGS) -o adipo-stub ./cmd/adipo-stub
+	@$(MAKE) build > /dev/null
+	@cp dist/adipo_*/adipo ./adipo
+	@cp dist/adipo-stub_*/adipo-stub-* ./adipo-stub 2>/dev/null || true
 	@echo "Building test binaries..."
 	@mkdir -p test/bin
 	@echo 'package main\nimport "fmt"\nfunc main() { fmt.Println("Hello from test binary!") }' > test/bin/hello.go
@@ -159,11 +172,11 @@ integration-test-impl:
 			level=$${spec%%:*}; archspec=$${spec#*:}; \
 			binary_args="$$binary_args --binary test/bin/hello-$$level:$$archspec"; \
 		done; \
-		./$(MAIN_BIN) create -o test/bin/hello.fat $$binary_args; \
+		./adipo create -o test/bin/hello.fat $$binary_args; \
 		echo "Inspecting fat binary..."; \
-		./$(MAIN_BIN) inspect test/bin/hello.fat; \
+		./adipo inspect test/bin/hello.fat; \
 		echo "Running fat binary..."; \
-		./$(MAIN_BIN) run test/bin/hello.fat; \
+		./adipo run test/bin/hello.fat; \
 		./test/bin/hello.fat; \
 	else \
 		echo "Cross-platform test: creating fat binary without stub..."; \
@@ -172,16 +185,12 @@ integration-test-impl:
 			level=$${spec%%:*}; archspec=$${spec#*:}; \
 			binary_args="$$binary_args --binary test/bin/hello-$$level:$$archspec"; \
 		done; \
-		./$(MAIN_BIN) create --no-stub -o test/bin/hello.fat $$binary_args; \
+		./adipo create --no-stub -o test/bin/hello.fat $$binary_args; \
 		echo "Inspecting fat binary..."; \
-		./$(MAIN_BIN) inspect test/bin/hello.fat; \
+		./adipo inspect test/bin/hello.fat; \
 		echo "Skipping execution tests (not on native platform)"; \
 	fi
 	@echo "Extracting binary..."
-	@./$(MAIN_BIN) extract -t 0 -o test/bin/hello-extracted test/bin/hello.fat
+	@./adipo extract -t 0 -o test/bin/hello-extracted test/bin/hello.fat
 	@echo "$(TEST_NAME) integration test passed!"
-	@rm -rf test/bin adipo-stub
-
-## check: Run all checks (fmt, vet, lint, test)
-check: fmt vet test
-	@echo "All checks passed!"
+	@rm -rf test/bin adipo adipo-stub

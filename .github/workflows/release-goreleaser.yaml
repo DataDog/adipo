@@ -30,3 +30,19 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create universal stubs archive
+        run: |
+          mkdir -p dist/all-stubs
+          cp dist/adipo-stub_*/adipo-stub-* dist/all-stubs/
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          tar czf dist/adipo-stubs-${VERSION}.tar.gz -C dist/all-stubs .
+          rm -rf dist/all-stubs
+          echo "Created dist/adipo-stubs-${VERSION}.tar.gz"
+
+      - name: Upload universal stubs archive to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          gh release upload "${GITHUB_REF#refs/tags/}" "dist/adipo-stubs-${VERSION}.tar.gz" --clobber

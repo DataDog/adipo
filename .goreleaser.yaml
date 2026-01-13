@@ -79,14 +79,6 @@ checksum:
   name_template: 'checksums.txt'
   algorithm: sha256
 
-# Publishers for custom post-processing
-publishers:
-  # Create universal stubs archive with all platform stubs
-  - name: universal-stubs
-    cmd: sh -c 'mkdir -p dist/all-stubs && cp dist/adipo-stub_*/adipo-stub-* dist/all-stubs/ 2>/dev/null && tar czf dist/adipo-stubs-{{ .Version }}.tar.gz -C dist/all-stubs . && rm -rf dist/all-stubs || true'
-    env:
-      - PATH={{ .Env.PATH }}
-
 # Changelog configuration
 changelog:
   use: github
