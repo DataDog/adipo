@@ -49,7 +49,7 @@ const (
 		ReservedSize + ChecksumSize // 260
 
 	// MetadataEntrySize is the fixed size of each binary metadata entry
-	MetadataEntrySize = 256
+	MetadataEntrySize = 512
 )
 
 // Architecture represents the CPU architecture
@@ -415,7 +415,7 @@ const (
 )
 
 // BinaryMetadata contains metadata for a single embedded binary
-// Size: 256 bytes
+// Size: 512 bytes
 type BinaryMetadata struct {
 	Architecture     Architecture    // CPU architecture (4 bytes)
 	ArchVersion      ArchVersion     // Architecture version (4 bytes)
@@ -430,7 +430,7 @@ type BinaryMetadata struct {
 	Priority         uint32          // Selection priority (4 bytes)
 	Format           BinaryFormat    // Binary format (ELF/Mach-O/PE) (4 bytes)
 	LibPathFlags     uint32          // Library path flags (4 bytes)
-	Reserved         [132]byte       // Reserved for future use (132 bytes)
+	Reserved         [388]byte       // Reserved for future use (388 bytes)
 }
 
 // MarshalBinary encodes the metadata to binary format
@@ -561,7 +561,7 @@ func (m *BinaryMetadata) UnmarshalBinary(data []byte) error {
 	offset += 4
 
 	// Reserved
-	copy(m.Reserved[:], data[offset:offset+128])
+	copy(m.Reserved[:], data[offset:])
 
 	return nil
 }

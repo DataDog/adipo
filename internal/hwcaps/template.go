@@ -38,9 +38,9 @@ func (e *TemplateEvaluator) EvaluateTemplates(templates []string) []string {
 	versions := e.getVersionFallbackChain()
 
 	// Expand templates in order and collect existing paths
-	// Priority: earlier templates first, then newer versions within each template
-	for _, template := range templates {
-		for _, ver := range versions {
+	// Priority: newer versions first, then template order within each version
+	for _, ver := range versions {
+		for _, template := range templates {
 			path := e.expandTemplate(template, ver)
 
 			// Only add if path exists

@@ -73,66 +73,70 @@ At runtime, the fat binary:
 
 1. **Detects CPU** - Determines architecture (x86-64/ARM64) and version (v3, v9.0, etc.)
 2. **Selects Binary** - Chooses the best matching binary from the fat archive
-3. **Expands Templates** - Replaces template variables with actual values for each template in order
-4. **Version Fallback** - For each template, tries current version first, then falls back to older versions
+3. **Version Fallback** - Creates a list of compatible versions (current, then older versions)
+4. **Expands Templates** - For each version, expands all templates with that version's variables
 5. **Filters Paths** - Keeps only paths that actually exist on the system
 6. **Sets Environment** - Prepends paths to `LD_LIBRARY_PATH`/`DYLD_LIBRARY_PATH` in priority order
 
 ### Example: x86-64 v3 CPU
 
-For a CPU with x86-64 v3 support, the default templates expand to paths in this priority order:
+For a CPU with x86-64 v3 support, templates expand in version-first order:
 
 ```
-# Template 0 (Debian multiarch): /usr/lib/{{.ArchTriple}}-linux-gnu/glibc-hwcaps/{{.Version}}
-/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v3     (exact match)
-/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v2     (v2 fallback)
-/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v1     (v1 fallback)
+# Version v3 (exact match) - all templates
+/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v3     (v3, template 0: Debian multiarch)
+/usr/lib64/glibc-hwcaps/x86-64-v3             (v3, template 1: RedHat lib64)
+/opt/x86-64/lib                                (v3, template 2: /opt)
 
-# Template 1 (RedHat lib64): /usr/lib64/glibc-hwcaps/{{.ArchVersion}}
-/usr/lib64/glibc-hwcaps/x86-64-v3             (exact match)
-/usr/lib64/glibc-hwcaps/x86-64-v2             (v2 fallback)
-/usr/lib64/glibc-hwcaps/x86-64-v1             (v1 fallback)
+# Version v2 (fallback) - all templates
+/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v2     (v2, template 0: Debian multiarch)
+/usr/lib64/glibc-hwcaps/x86-64-v2             (v2, template 1: RedHat lib64)
 
-# Template 2 (Custom /opt): /opt/{{.Arch}}/lib
-/opt/x86-64/lib                                (no version variants)
+# Version v1 (fallback) - all templates
+/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v1     (v1, template 0: Debian multiarch)
+/usr/lib64/glibc-hwcaps/x86-64-v1             (v1, template 1: RedHat lib64)
 ```
 
-Only paths that exist on disk are included. For example, if only v3 and v2 paths exist:
+Only paths that exist on disk are included. For example, if only v3 and v2 Debian paths exist:
 ```bash
-LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v3:/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v2:/usr/lib64/glibc-hwcaps/x86-64-v3:...
+LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v3:/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v2
 ```
 
 ### Example: ARM64 v9.4 with Version Fallback
 
-For ARM64 v9.4, the evaluator tries each template with version fallback:
-- v9.4 (exact) → v9.5, v9.3, v9.2, v9.1, v9.0 → v8.9 → v8.8 → ... → v8.0
+For ARM64 v9.4, version fallback order: v9.4 → v9.5 → v9.3 → v9.2 → v9.1 → v9.0 → v8.9 → ... → v8.0
+
+Templates expand in version-first order:
 
 ```
-# Template 0 (Debian multiarch): /usr/lib/{{.ArchTriple}}-linux-gnu/glibc-hwcaps/{{.Version}}
-/usr/lib/aarch64-linux-gnu/glibc-hwcaps/v9.4  (exact match)
-/usr/lib/aarch64-linux-gnu/glibc-hwcaps/v9.0  (v9.0 fallback)
-/usr/lib/aarch64-linux-gnu/glibc-hwcaps/v8.9  (v8.9 fallback)
-...
+# Version v9.4 (exact) - all templates
+/usr/lib/aarch64-linux-gnu/glibc-hwcaps/v9.4  (v9.4, template 0: Debian multiarch)
+/usr/lib64/glibc-hwcaps/aarch64-v9.4          (v9.4, template 1: RedHat lib64)
+/opt/aarch64/lib                               (v9.4, template 2: /opt)
 
-# Template 1 (RedHat lib64): /usr/lib64/glibc-hwcaps/{{.ArchVersion}}
-/usr/lib64/glibc-hwcaps/aarch64-v9.4          (exact match)
-/usr/lib64/glibc-hwcaps/aarch64-v9.0          (v9.0 fallback)
+# Version v9.0 (fallback) - all templates
+/usr/lib/aarch64-linux-gnu/glibc-hwcaps/v9.0  (v9.0, template 0: Debian multiarch)
+/usr/lib64/glibc-hwcaps/aarch64-v9.0          (v9.0, template 1: RedHat lib64)
+
+# Version v8.9 (fallback) - all templates
+/usr/lib/aarch64-linux-gnu/glibc-hwcaps/v8.9  (v8.9, template 0: Debian multiarch)
+/usr/lib64/glibc-hwcaps/aarch64-v8.9          (v8.9, template 1: RedHat lib64)
 ...
 ```
 
-This ensures binaries compiled for v9.4 can still use libraries in v9.0 or older directories.
+This ensures binaries compiled for v9.4 can use libraries in v9.0 or older directories.
 
 ## Priority Order
 
 Library paths are prioritized by:
-1. **Template order** - Earlier templates in the list are evaluated first
-2. **Version match** - Within each template, exact version matches come before fallback versions
+1. **Version match** - Exact version matches come first, then fallback to older versions
+2. **Template order** - Within each version, templates are evaluated in order
 3. **Existence** - Only paths that exist on disk are included
 
 For example, with default templates on x86-64 v3:
-1. All Debian multiarch paths (template 0): v3, v2, v1
-2. All RedHat lib64 paths (template 1): v3, v2, v1
-3. Custom /opt paths (template 2)
+1. All v3 paths: Debian multiarch (template 0), RedHat lib64 (template 1), /opt (template 2)
+2. All v2 paths: Debian multiarch (template 0), RedHat lib64 (template 1)
+3. All v1 paths: Debian multiarch (template 0), RedHat lib64 (template 1)
 
 ## Platform Support
 
@@ -225,8 +229,8 @@ For x86-64, glibc automatically searches hwcaps directories. The template system
 
 ## Limitations
 
-- Maximum 3 templates by default (can fit in metadata)
-- Library paths cannot exceed 132 bytes total in metadata
+- Library path templates are stored in metadata Reserved field (388 bytes)
+- Each template is length-prefixed (2-byte length + template string)
 - Paths must be absolute (relative paths not supported)
 - macOS SIP restrictions apply to system binaries
 
@@ -240,8 +244,9 @@ go test -tags=integration ./internal/hwcaps/...
 
 ## Implementation Details
 
-- Templates are stored in binary metadata (132-byte reserved field)
-- Each template is length-prefixed for efficient parsing
+- Binary metadata size: 512 bytes (FormatVersion 1)
+- Templates stored in Reserved field: 388 bytes available
+- Each template is length-prefixed (2 bytes) for efficient parsing
 - Version fallback uses explicit ARM64 version list (format.ARM64VersionFallbackOrder)
-- Paths are collected in template order, then version fallback order
+- Paths are collected in version-first order: for each version, expand all templates
 - Template evaluation happens at runtime, not build time

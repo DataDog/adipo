@@ -347,14 +347,14 @@ func TestPathOrdering(t *testing.T) {
 		t.Fatalf("expected 4 paths, got %d", len(validPaths))
 	}
 
-	// Paths are prioritized by template order first, then version fallback
-	// Template 0 (Debian multiarch): v3, then v2
-	// Template 1 (RedHat): v3, then v2
+	// Paths are prioritized by version first, then template order
+	// Version v3: Template 0 (Debian), then Template 1 (RedHat)
+	// Version v2: Template 0 (Debian), then Template 1 (RedHat)
 	expected := []string{
-		paths[0], // Template 0, v3
-		paths[2], // Template 0, v2
-		paths[1], // Template 1, v3
-		paths[3], // Template 1, v2
+		paths[0], // v3, Template 0 (Debian)
+		paths[1], // v3, Template 1 (RedHat)
+		paths[2], // v2, Template 0 (Debian)
+		paths[3], // v2, Template 1 (RedHat)
 	}
 
 	for i, want := range expected {

@@ -344,10 +344,10 @@ func TestLibraryPathMarshalUnmarshal(t *testing.T) {
 					restored.GetLibraryPath(), tt.path)
 			}
 
-			// Also verify MetadataVersion is preserved
-			if restored.MetadataVersion != 1 {
-				t.Errorf("MetadataVersion not preserved: got %v, want %v",
-					restored.MetadataVersion, 1)
+			// SetLibraryPath uses legacy v0 format, so MetadataVersion should be 0
+			if restored.MetadataVersion != 0 {
+				t.Errorf("MetadataVersion should be 0 for legacy format: got %v, want %v",
+					restored.MetadataVersion, 0)
 			}
 		})
 	}

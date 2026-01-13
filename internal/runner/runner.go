@@ -12,20 +12,34 @@ import (
 )
 
 // PrepareEnvironmentWithLibPath prepares the environment with library path from binary metadata.
-// Evaluates templates at runtime, scores candidates, and uses best matches.
+// Supports both legacy library paths (v0) and templates (v1+).
 //
 // Parameters:
-//   - metadata: Binary metadata containing library path templates
+//   - metadata: Binary metadata containing library path or templates
 //   - verbose: If true, prints library path configuration to stderr
 //
 // Returns the modified environment or the original environment if no library path is set.
 func PrepareEnvironmentWithLibPath(metadata *format.BinaryMetadata, verbose bool) []string {
 	env := extractor.GetEnvironment()
 
-	// Get templates from metadata
+	// Check for templates first (v1+ format)
 	templates := metadata.GetLibraryPathTemplates()
 	if len(templates) == 0 {
-		return env
+		// Fall back to legacy library path (v0 format)
+		legacyPath := metadata.GetLibraryPath()
+		if legacyPath == "" {
+			return env
+		}
+
+		if verbose {
+			fmt.Fprintf(os.Stderr, "Using legacy library path: %s\n", legacyPath)
+		}
+
+		// Use legacy path directly (no template evaluation)
+		libEnvVar := GetLibraryPathEnvVar()
+		overrides := make(map[string]string)
+		overrides[libEnvVar] = PrependLibraryPath(env, libEnvVar, legacyPath)
+		return extractor.SetupEnvironment(env, overrides)
 	}
 
 	if verbose {
