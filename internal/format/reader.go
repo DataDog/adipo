@@ -318,6 +318,22 @@ func (r *Reader) GetBinaryData(index int) ([]byte, error) {
 		return nil, fmt.Errorf("invalid compressed size: 0")
 	}
 
+	// Validate file offset to prevent reading beyond file boundaries
+	if meta.DataOffset >= uint64(r.fileSize) {
+		return nil, fmt.Errorf("data offset (%d) is beyond file size (%d)",
+			meta.DataOffset, r.fileSize)
+	}
+
+	// Check that offset + size doesn't exceed file size (with overflow protection)
+	endOffset := meta.DataOffset + meta.CompressedSize
+	if endOffset < meta.DataOffset { // Integer overflow check
+		return nil, fmt.Errorf("data offset + compressed size overflows")
+	}
+	if endOffset > uint64(r.fileSize) {
+		return nil, fmt.Errorf("data range [%d, %d) exceeds file size (%d)",
+			meta.DataOffset, endOffset, r.fileSize)
+	}
+
 	// Seek to binary data
 	if _, err := r.input.Seek(int64(meta.DataOffset), io.SeekStart); err != nil {
 		return nil, fmt.Errorf("failed to seek to binary data offset %d: %w", meta.DataOffset, err)
