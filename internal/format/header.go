@@ -9,6 +9,7 @@ package format
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 )
 
 // Magic marker for adipo fat binaries
@@ -81,6 +82,36 @@ func (a Architecture) String() string {
 	default:
 		return "unknown"
 	}
+}
+
+// ValidateArchitecture checks if an architecture value is valid
+func ValidateArchitecture(arch Architecture) error {
+	if arch != ArchX86_64 && arch != ArchARM64 && arch != ArchUnknown {
+		return fmt.Errorf("invalid architecture value: %d", arch)
+	}
+	return nil
+}
+
+// ValidateArchVersion checks if an architecture version is valid for the given architecture
+func ValidateArchVersion(arch Architecture, version ArchVersion) error {
+	switch arch {
+	case ArchX86_64:
+		// x86-64 versions: 0 (unknown), 1-4 (v1-v4)
+		if version > X86_64_V4 {
+			return fmt.Errorf("invalid x86-64 version: %d (max: %d)", version, X86_64_V4)
+		}
+	case ArchARM64:
+		// ARM64 versions: 0 (unknown), 1-16 (v8.0-v9.5)
+		if version > ARM64_V9_5 {
+			return fmt.Errorf("invalid ARM64 version: %d (max: %d)", version, ARM64_V9_5)
+		}
+	case ArchUnknown:
+		// Unknown architecture can have any version
+		return nil
+	default:
+		return fmt.Errorf("cannot validate version for unknown architecture: %d", arch)
+	}
+	return nil
 }
 
 // ArchVersion represents the architecture version/level

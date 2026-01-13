@@ -117,8 +117,16 @@ func (r *Reader) parse() error {
 			return err
 		}
 
-		// Validate sizes to prevent integer overflow and decompression bombs
+		// Validate architecture and version enums
 		meta := r.metadata[i]
+		if err := ValidateArchitecture(meta.Architecture); err != nil {
+			return fmt.Errorf("binary %d: %w", i, err)
+		}
+		if err := ValidateArchVersion(meta.Architecture, meta.ArchVersion); err != nil {
+			return fmt.Errorf("binary %d: %w", i, err)
+		}
+
+		// Validate sizes to prevent integer overflow and decompression bombs
 		if meta.CompressedSize > MaxCompressedSize {
 			return fmt.Errorf("binary %d: compressed size (%d bytes) exceeds maximum allowed (%d bytes)",
 				i, meta.CompressedSize, MaxCompressedSize)
