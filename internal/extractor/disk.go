@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // DiskExtractor extracts binaries to disk (temp files or deterministic paths)
@@ -17,6 +18,35 @@ type DiskExtractor struct {
 	TempDir      string
 	FileTemplate string // Optional: template for deterministic filename
 	file         *os.File
+}
+
+// ValidatePath ensures targetPath stays within baseDir and prevents directory traversal attacks.
+// It resolves both paths to absolute form and verifies the target doesn't escape the base directory.
+func ValidatePath(baseDir, targetPath string) error {
+	// Resolve to absolute paths
+	absBase, err := filepath.Abs(baseDir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve base directory: %w", err)
+	}
+
+	absTarget, err := filepath.Abs(targetPath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve target path: %w", err)
+	}
+
+	// Use filepath.Rel to check containment
+	// If target is within base, rel won't start with ".."
+	rel, err := filepath.Rel(absBase, absTarget)
+	if err != nil {
+		return fmt.Errorf("failed to compute relative path: %w", err)
+	}
+
+	// Check for escape attempt
+	if strings.HasPrefix(rel, "..") || strings.HasPrefix(rel, string(filepath.Separator)) {
+		return fmt.Errorf("path traversal blocked: %q escapes base directory %q", targetPath, baseDir)
+	}
+
+	return nil
 }
 
 // Extract extracts the binary to a file (temp or deterministic path)
@@ -37,6 +67,11 @@ func (d *DiskExtractor) Extract(data []byte, name string) (string, func(), error
 		tempFile = filepath.Join(tempDir, d.FileTemplate)
 		extractDir = tempDir
 
+		// Validate path to prevent directory traversal
+		if err := ValidatePath(tempDir, tempFile); err != nil {
+			return "", nil, fmt.Errorf("invalid extraction path: %w", err)
+		}
+
 		// Ensure parent directory exists
 		if err := os.MkdirAll(filepath.Dir(tempFile), 0755); err != nil {
 			return "", nil, fmt.Errorf("failed to create directory: %w", err)
@@ -50,6 +85,12 @@ func (d *DiskExtractor) Extract(data []byte, name string) (string, func(), error
 
 		// Create temp file in the directory
 		tempFile = filepath.Join(extractDir, name)
+
+		// Validate path to prevent directory traversal (defense in depth)
+		if err := ValidatePath(extractDir, tempFile); err != nil {
+			_ = os.RemoveAll(extractDir)
+			return "", nil, fmt.Errorf("invalid extraction path: %w", err)
+		}
 	}
 
 	// Create/open the file
