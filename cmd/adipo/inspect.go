@@ -244,21 +244,21 @@ func formatMetadataForJSON(metadata []*format.BinaryMetadata) []map[string]inter
 			features = cpu.FormatARMFeatures(meta.RequiredFeatures)
 		}
 
-		libraryPath := meta.GetLibraryPath()
+		libraryPathTemplates := meta.GetLibraryPathTemplates()
 
 		result[i] = map[string]interface{}{
-			"index":             i,
-			"architecture":      meta.Architecture.String(),
-			"version":           meta.ArchVersion.String(meta.Architecture),
-			"features":          features,
-			"features_mask":     fmt.Sprintf("0x%x", meta.RequiredFeatures),
-			"original_size":     meta.OriginalSize,
-			"compressed_size":   meta.CompressedSize,
-			"compression":       meta.Compression.String(),
-			"compression_ratio": float64(meta.CompressedSize) / float64(meta.OriginalSize) * 100,
-			"priority":          meta.Priority,
-			"library_path":      libraryPath,
-			"metadata_version":  meta.MetadataVersion,
+			"index":                  i,
+			"architecture":           meta.Architecture.String(),
+			"version":                meta.ArchVersion.String(meta.Architecture),
+			"features":               features,
+			"features_mask":          fmt.Sprintf("0x%x", meta.RequiredFeatures),
+			"original_size":          meta.OriginalSize,
+			"compressed_size":        meta.CompressedSize,
+			"compression":            meta.Compression.String(),
+			"compression_ratio":      float64(meta.CompressedSize) / float64(meta.OriginalSize) * 100,
+			"priority":               meta.Priority,
+			"library_path_templates": libraryPathTemplates,
+			"metadata_version":       meta.MetadataVersion,
 		}
 	}
 
