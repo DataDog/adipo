@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 
@@ -9,80 +8,90 @@ import (
 	"github.com/DataDog/adipo/internal/extractor"
 	"github.com/DataDog/adipo/internal/hwcaps"
 	"github.com/DataDog/adipo/internal/runner"
+	"github.com/spf13/cobra"
 )
 
-var (
-	libPathTemplate = flag.String("lib-path-template", "", "Template with {{.Arch}}, {{.Version}}, {{.ArchVersion}} variables")
-	includeStandard = flag.Bool("include-standard-hwcaps", true, "Scan standard glibc-hwcaps directories")
-	includeOpt      = flag.Bool("include-opt-pattern", true, "Scan /opt/<arch>/lib directories")
-	dryRun          = flag.Bool("dry-run", false, "Show LD_LIBRARY_PATH without executing")
-	verbose         = flag.Bool("verbose", false, "Show detailed scanning process")
-)
-
-// Custom flag type for repeated --scan-dir flags
-type scanDirsFlag []string
-
-func (s *scanDirsFlag) String() string {
-	return fmt.Sprintf("%v", *s)
+var flags struct {
+	libPathTemplate string
+	includeStandard bool
+	includeOpt      bool
+	dryRun          bool
+	verbose         bool
+	scanDirs        []string
 }
 
-func (s *scanDirsFlag) Set(value string) error {
-	*s = append(*s, value)
-	return nil
+var rootCmd = &cobra.Command{
+	Use:   "hwcaps-exec [flags] program [args...]",
+	Short: "Execute a program with LD_LIBRARY_PATH configured based on CPU capabilities",
+	Long: `Execute a program with LD_LIBRARY_PATH/DYLD_LIBRARY_PATH configured based on CPU capabilities.
+
+This command replicates glibc hwcaps functionality for platforms without native support.
+It detects CPU capabilities, scans for compatible library directories, and executes the
+specified program with the appropriate library paths.
+
+Directory Scanning (enabled by default):
+  - Standard glibc-hwcaps paths: /usr/lib64/glibc-hwcaps/<arch-version>
+  - Custom /opt paths: /opt/<arch>/lib
+  - User-defined templates with {{.Arch}}, {{.Version}}, {{.ArchVersion}}
+  - Additional directories via --scan-dir flag`,
+	Example: `  # Auto-detect CPU and use standard paths
+  hwcaps-exec myprogram arg1 arg2
+
+  # Preview what would be executed (dry run)
+  hwcaps-exec --dry-run myprogram
+
+  # Use custom template
+  hwcaps-exec --lib-path-template "/custom/{{.ArchVersion}}/lib" myprogram
+
+  # Add additional directories
+  hwcaps-exec --scan-dir /opt/mylibs myprogram
+
+  # Verbose mode shows scanning process
+  hwcaps-exec --verbose myprogram`,
+	Args:              cobra.MinimumNArgs(1),
+	RunE:              runHwcapsExec,
+	DisableFlagParsing: false,
+	SilenceUsage:      true,
+	SilenceErrors:     true,
 }
 
-var scanDirs scanDirsFlag
+func init() {
+	rootCmd.Flags().StringVar(&flags.libPathTemplate, "lib-path-template", "",
+		"Template with {{.Arch}}, {{.Version}}, {{.ArchVersion}} variables")
+	rootCmd.Flags().BoolVar(&flags.includeStandard, "include-standard-hwcaps", true,
+		"Scan standard glibc-hwcaps directories")
+	rootCmd.Flags().BoolVar(&flags.includeOpt, "include-opt-pattern", true,
+		"Scan /opt/<arch>/lib directories")
+	rootCmd.Flags().BoolVar(&flags.dryRun, "dry-run", false,
+		"Show LD_LIBRARY_PATH without executing")
+	rootCmd.Flags().BoolVar(&flags.verbose, "verbose", false,
+		"Show detailed scanning process")
+	rootCmd.Flags().StringSliceVar(&flags.scanDirs, "scan-dir", []string{},
+		"Additional directories to scan (can be repeated)")
+}
 
 func main() {
-	flag.Var(&scanDirs, "scan-dir", "Additional directories to scan (can be repeated)")
-
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: hwcaps-exec [flags] program [args...]\n\n")
-		fmt.Fprintf(os.Stderr, "Execute a program with LD_LIBRARY_PATH/DYLD_LIBRARY_PATH configured based on CPU capabilities.\n\n")
-		fmt.Fprintf(os.Stderr, "This command replicates glibc hwcaps functionality for platforms without native support.\n")
-		fmt.Fprintf(os.Stderr, "It detects CPU capabilities, scans for compatible library directories, and executes the\n")
-		fmt.Fprintf(os.Stderr, "specified program with the appropriate library paths.\n\n")
-		fmt.Fprintf(os.Stderr, "Directory Scanning (enabled by default):\n")
-		fmt.Fprintf(os.Stderr, "  - Standard glibc-hwcaps paths: /usr/lib64/glibc-hwcaps/<arch-version>\n")
-		fmt.Fprintf(os.Stderr, "  - Custom /opt paths: /opt/<arch>/lib\n")
-		fmt.Fprintf(os.Stderr, "  - User-defined templates with {{.Arch}}, {{.Version}}, {{.ArchVersion}}\n")
-		fmt.Fprintf(os.Stderr, "  - Additional directories via --scan-dir flag\n\n")
-		fmt.Fprintf(os.Stderr, "Examples:\n")
-		fmt.Fprintf(os.Stderr, "  # Auto-detect CPU and use standard paths\n")
-		fmt.Fprintf(os.Stderr, "  hwcaps-exec myprogram arg1 arg2\n\n")
-		fmt.Fprintf(os.Stderr, "  # Preview what would be executed (dry run)\n")
-		fmt.Fprintf(os.Stderr, "  hwcaps-exec --dry-run myprogram\n\n")
-		fmt.Fprintf(os.Stderr, "  # Use custom template\n")
-		fmt.Fprintf(os.Stderr, "  hwcaps-exec --lib-path-template \"/custom/{{.ArchVersion}}/lib\" myprogram\n\n")
-		fmt.Fprintf(os.Stderr, "  # Add additional directories\n")
-		fmt.Fprintf(os.Stderr, "  hwcaps-exec --scan-dir /opt/mylibs myprogram\n\n")
-		fmt.Fprintf(os.Stderr, "  # Verbose mode shows scanning process\n")
-		fmt.Fprintf(os.Stderr, "  hwcaps-exec --verbose myprogram\n\n")
-		fmt.Fprintf(os.Stderr, "Flags:\n")
-		flag.PrintDefaults()
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "hwcaps-exec: %v\n", err)
+		os.Exit(1)
 	}
+}
 
-	flag.Parse()
-
-	if flag.NArg() < 1 {
-		flag.Usage()
-		fatal("error: program argument required")
-	}
-
-	program := flag.Arg(0)
-	programArgs := flag.Args()[1:]
+func runHwcapsExec(cmd *cobra.Command, args []string) error {
+	program := args[0]
+	programArgs := args[1:]
 
 	// 1. Detect CPU capabilities
-	if *verbose {
+	if flags.verbose {
 		fmt.Fprintf(os.Stderr, "Detecting CPU capabilities...\n")
 	}
 
 	caps, err := cpu.Detect()
 	if err != nil {
-		fatal("failed to detect CPU: %v", err)
+		return fmt.Errorf("failed to detect CPU: %w", err)
 	}
 
-	if *verbose {
+	if flags.verbose {
 		fmt.Fprintf(os.Stderr, "CPU: %s %s\n", caps.Architecture, caps.VersionStr)
 	}
 
@@ -90,17 +99,17 @@ func main() {
 	config := &hwcaps.ScanConfig{
 		Capabilities:          caps,
 		Templates:             []string{},
-		ScanDirs:              []string(scanDirs),
-		IncludeStandardHwcaps: *includeStandard,
-		IncludeOptPattern:     *includeOpt,
+		ScanDirs:              flags.scanDirs,
+		IncludeStandardHwcaps: flags.includeStandard,
+		IncludeOptPattern:     flags.includeOpt,
 	}
 
-	if *libPathTemplate != "" {
-		config.Templates = append(config.Templates, *libPathTemplate)
+	if flags.libPathTemplate != "" {
+		config.Templates = append(config.Templates, flags.libPathTemplate)
 	}
 
 	// 3. Scan directories
-	if *verbose {
+	if flags.verbose {
 		fmt.Fprintf(os.Stderr, "\nScanning for library directories...\n")
 	}
 
@@ -111,7 +120,7 @@ func main() {
 	libraryPath := hwcaps.BuildLibraryPath(selected)
 
 	// 5. Verbose output
-	if *verbose {
+	if flags.verbose {
 		printScanResults(results, selected, libraryPath)
 	}
 
@@ -119,7 +128,7 @@ func main() {
 	libEnvVar := runner.GetLibraryPathEnvVar()
 
 	// 7. Dry run mode
-	if *dryRun {
+	if flags.dryRun {
 		if libraryPath != "" {
 			fmt.Printf("%s=%s\n", libEnvVar, libraryPath)
 		} else {
@@ -130,7 +139,7 @@ func main() {
 			fmt.Printf(" %s", arg)
 		}
 		fmt.Printf("]\n")
-		os.Exit(0)
+		return nil
 	}
 
 	// 8. Prepare environment
@@ -139,17 +148,17 @@ func main() {
 
 	if libraryPath != "" {
 		overrides[libEnvVar] = runner.PrependLibraryPath(env, libEnvVar, libraryPath)
-		if *verbose {
+		if flags.verbose {
 			fmt.Fprintf(os.Stderr, "\nSetting %s=%s\n", libEnvVar, overrides[libEnvVar])
 		}
-	} else if *verbose {
+	} else if flags.verbose {
 		fmt.Fprintf(os.Stderr, "\nNo compatible libraries found, executing with system defaults\n")
 	}
 
 	modifiedEnv := extractor.SetupEnvironment(env, overrides)
 
 	// 9. Execute program
-	if *verbose {
+	if flags.verbose {
 		fmt.Fprintf(os.Stderr, "Executing: %s", program)
 		for _, arg := range programArgs {
 			fmt.Fprintf(os.Stderr, " %s", arg)
@@ -158,8 +167,10 @@ func main() {
 	}
 
 	if err := extractor.Execute(program, programArgs, modifiedEnv); err != nil {
-		fatal("execution failed: %v", err)
+		return fmt.Errorf("execution failed: %w", err)
 	}
+
+	return nil
 }
 
 func printScanResults(results []hwcaps.ScanResult, selected []hwcaps.ScanResult, libraryPath string) {
@@ -195,9 +206,4 @@ func printScanResults(results []hwcaps.ScanResult, selected []hwcaps.ScanResult,
 	} else {
 		fmt.Fprintf(os.Stderr, "  (not set)\n")
 	}
-}
-
-func fatal(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, "hwcaps-exec: "+format+"\n", args...)
-	os.Exit(1)
 }

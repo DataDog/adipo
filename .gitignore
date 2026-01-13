@@ -7,13 +7,16 @@
 *.dll
 *.so
 *.dylib
-adipo
 
 # Stub binary and generated code (generated at build time)
 build/
+dist/
 internal/stub/stub.bin
 internal/stub/stub_generated.go
 adipo-stub*
+
+# Built binaries
+hwcaps-exec
 
 # Test binary, built with `go test -c`
 *.test

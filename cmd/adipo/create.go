@@ -10,6 +10,7 @@ import (
 	"github.com/DataDog/adipo/internal/compression"
 	"github.com/DataDog/adipo/internal/elf"
 	"github.com/DataDog/adipo/internal/format"
+	"github.com/DataDog/adipo/internal/hwcaps"
 	"github.com/DataDog/adipo/internal/macho"
 	"github.com/spf13/cobra"
 )
@@ -25,12 +26,6 @@ var createFlags struct {
 	defaultExtractDir    string
 	defaultCleanupOnExit bool
 	defaultVerbose       bool
-
-	// Library path flags
-	libPath       string   // Default library path for all binaries
-	binaryLibs    []string // Per-binary library paths (format: "FILE:LIBPATH")
-	autoLibPath   string   // Auto-generate pattern (e.g., "/opt/libs/{{.ArchVersion}}")
-	enableAutoLib bool     // Enable automatic library path generation (default two-path format)
 }
 
 var createCmd = &cobra.Command{
@@ -77,20 +72,6 @@ func init() {
 	createCmd.Flags().StringVar(&createFlags.defaultExtractDir, "default-extract-dir", "", "Default extraction directory for stub/run (supports ~ for home directory)")
 	createCmd.Flags().BoolVar(&createFlags.defaultCleanupOnExit, "default-cleanup-on-exit", true, "Default: clean up extracted binary after execution")
 	createCmd.Flags().BoolVar(&createFlags.defaultVerbose, "default-verbose", false, "Default: show verbose output (CPU detection, selection, extraction)")
-
-	// Library path flags
-	createCmd.Flags().StringVar(&createFlags.libPath, "lib-path", "",
-		"Default library path to prepend to LD_LIBRARY_PATH (absolute paths only)")
-	createCmd.Flags().StringArrayVar(&createFlags.binaryLibs, "binary-lib", []string{},
-		"Per-binary library path (FILE:LIBPATH, e.g., app-v3:/opt/libs/v3)")
-	createCmd.Flags().StringVar(&createFlags.autoLibPath, "auto-lib-path", "",
-		"Auto-generate library paths using template (e.g., /opt/libs/{{.ArchVersion}}). "+
-			"Template variables: {{.Arch}} (base arch like 'x86-64'), {{.Version}} (version like 'v4'), "+
-			"{{.ArchVersion}} (full like 'x86-64-v4'). "+
-			"If empty but --enable-auto-lib specified, uses default: /opt/<arch>/lib:/usr/lib64/glibc-hwcaps/<arch-version>")
-	createCmd.Flags().BoolVar(&createFlags.enableAutoLib, "enable-auto-lib", false,
-		"Enable automatic library path generation using default two-path format: "+
-			"/opt/<arch>/lib:/usr/lib<width>/glibc-hwcaps/<arch-version>")
 
 	if err := createCmd.MarkFlagRequired("output"); err != nil {
 		panic(err)
@@ -461,47 +442,15 @@ func processBinary(input *InputBinary, compAlgo format.CompressionAlgo, level in
 		Format:           binaryFormat,
 	}
 
-	// Determine library path for this binary
-	var libraryPath string
+	// Store default library path templates in metadata
+	// Templates are evaluated at runtime on the target system
+	templates := hwcaps.GetDefaultTemplates()
 
-	// Priority order:
-	// 1. Per-binary specification (--binary-lib FILE:PATH)
-	// 2. Auto-generated path (--auto-lib-path template or --enable-auto-lib for default)
-	// 3. Default path (--lib-path)
-
-	binaryLibMap, err := parseBinaryLibraryPaths()
-	if err != nil {
-		return nil, err
+	if err := metadata.SetLibraryPathTemplates(templates); err != nil {
+		return nil, fmt.Errorf("failed to store library path templates: %w", err)
 	}
 
-	// Check per-binary specification
-	if path, ok := binaryLibMap[filepath.Base(input.Path)]; ok {
-		libraryPath = path
-	} else if createFlags.autoLibPath != "" || createFlags.enableAutoLib {
-		// Generate from template or use default two-path format
-		// If autoLibPath is empty but enableAutoLib is true, generateAutoLibraryPath
-		// will use the default format
-		libraryPath, err = generateAutoLibraryPath(createFlags.autoLibPath, arch, archVersion)
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate library path: %w", err)
-		}
-	} else if createFlags.libPath != "" {
-		// Use default path
-		libraryPath = createFlags.libPath
-	}
-
-	// Set library path in metadata if specified
-	if libraryPath != "" {
-		if !filepath.IsAbs(libraryPath) {
-			return nil, fmt.Errorf("library path must be absolute: %s", libraryPath)
-		}
-
-		if err := metadata.SetLibraryPath(libraryPath); err != nil {
-			return nil, fmt.Errorf("failed to set library path: %w", err)
-		}
-
-		fmt.Printf("  Library path: %s\n", libraryPath)
-	}
+	fmt.Printf("  Library path: %d templates stored for runtime evaluation\n", len(templates))
 
 	entry := &format.BinaryEntry{
 		Data:         compressed,
@@ -657,89 +606,4 @@ func validateStubCompatibility(stubArch format.Architecture, stubData []byte, en
 	}
 
 	return nil
-}
-
-// parseBinaryLibraryPaths parses the --binary-lib flags into a map
-// Format: "FILE:LIBPATH" where FILE is the binary filename
-func parseBinaryLibraryPaths() (map[string]string, error) {
-	libMap := make(map[string]string)
-
-	for _, spec := range createFlags.binaryLibs {
-		parts := strings.SplitN(spec, ":", 2)
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid --binary-lib format: %s (expected FILE:LIBPATH)", spec)
-		}
-
-		file := parts[0]
-		libPath := parts[1]
-
-		// Validate absolute path
-		if !filepath.IsAbs(libPath) {
-			return nil, fmt.Errorf("library path must be absolute: %s", libPath)
-		}
-
-		libMap[file] = libPath
-	}
-
-	return libMap, nil
-}
-
-// generateAutoLibraryPath generates library path(s) using template and binary metadata
-// If template is empty, generates default two-path format:
-//   /opt/<base-arch>/lib:/usr/lib<width>/glibc-hwcaps/<arch-version>
-// For x86-64-v4: /opt/x86-64/lib:/usr/lib64/glibc-hwcaps/x86-64-v4
-// For aarch64-v9.0: /opt/aarch64/lib:/usr/lib64/glibc-hwcaps/aarch64-v9.0
-func generateAutoLibraryPath(template string, arch format.Architecture, version format.ArchVersion) (string, error) {
-	// If no template specified, use default two-path format
-	if template == "" {
-		return generateDefaultLibraryPath(arch, version)
-	}
-
-	// Replace template variables
-	// {{.Arch}} -> "x86-64" or "aarch64" (base architecture)
-	// {{.Version}} -> "v1", "v2", "v8.0", etc. (just the version part)
-	// {{.ArchVersion}} -> "x86-64-v1", "aarch64-v8.0" (full arch-version)
-	result := template
-	baseArch := arch.String()
-	versionStr := version.String(arch)
-	fullArchVersion := baseArch + "-" + versionStr
-
-	result = strings.ReplaceAll(result, "{{.ArchVersion}}", fullArchVersion)
-	result = strings.ReplaceAll(result, "{{.Arch}}", baseArch)
-	result = strings.ReplaceAll(result, "{{.Version}}", versionStr)
-
-	// Validate resulting path is absolute
-	if !filepath.IsAbs(result) {
-		return "", fmt.Errorf("generated library path must be absolute: %s", result)
-	}
-
-	return result, nil
-}
-
-// generateDefaultLibraryPath generates the default two-path format
-func generateDefaultLibraryPath(arch format.Architecture, version format.ArchVersion) (string, error) {
-	baseArch := arch.String()
-	versionStr := version.String(arch)
-	fullArchVersion := baseArch + "-" + versionStr
-
-	// Determine library width based on architecture
-	// 64-bit architectures use lib64, 32-bit use lib
-	libWidth := ""
-	switch arch {
-	case format.ArchX86_64, format.ArchARM64:
-		libWidth = "64"
-	default:
-		// For unknown architectures, assume 64-bit
-		libWidth = "64"
-	}
-
-	// Build the two-path format
-	// Path 1: /opt/<base-arch>/lib
-	path1 := fmt.Sprintf("/opt/%s/lib", baseArch)
-
-	// Path 2: /usr/lib<width>/glibc-hwcaps/<arch-version>
-	path2 := fmt.Sprintf("/usr/lib%s/glibc-hwcaps/%s", libWidth, fullArchVersion)
-
-	// Combine with colon separator
-	return path1 + ":" + path2, nil
 }

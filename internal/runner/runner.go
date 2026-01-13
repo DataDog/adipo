@@ -8,24 +8,60 @@ import (
 
 	"github.com/DataDog/adipo/internal/extractor"
 	"github.com/DataDog/adipo/internal/format"
+	"github.com/DataDog/adipo/internal/hwcaps"
 )
 
 // PrepareEnvironmentWithLibPath prepares the environment with library path from binary metadata.
-// It reads the library path from the metadata and prepends it to LD_LIBRARY_PATH (Linux)
-// or DYLD_LIBRARY_PATH (macOS) before execution.
+// Evaluates templates at runtime, scores candidates, and uses best matches.
 //
 // Parameters:
-//   - metadata: Binary metadata containing the library path
+//   - metadata: Binary metadata containing library path templates
 //   - verbose: If true, prints library path configuration to stderr
 //
 // Returns the modified environment or the original environment if no library path is set.
 func PrepareEnvironmentWithLibPath(metadata *format.BinaryMetadata, verbose bool) []string {
-	libraryPath := metadata.GetLibraryPath()
 	env := extractor.GetEnvironment()
 
-	if libraryPath == "" {
+	// Get templates from metadata
+	templates := metadata.GetLibraryPathTemplates()
+	if len(templates) == 0 {
 		return env
 	}
+
+	if verbose {
+		fmt.Fprintf(os.Stderr, "Evaluating %d library path templates...\n", len(templates))
+	}
+
+	// Create evaluator for current CPU
+	evaluator, err := hwcaps.NewTemplateEvaluator(
+		metadata.Architecture,
+		metadata.ArchVersion,
+	)
+	if err != nil {
+		if verbose {
+			fmt.Fprintf(os.Stderr, "Warning: Failed to create template evaluator: %v\n", err)
+		}
+		return env
+	}
+
+	// Evaluate templates and get ranked paths
+	validPaths := evaluator.EvaluateTemplates(templates)
+	if len(validPaths) == 0 {
+		if verbose {
+			fmt.Fprintf(os.Stderr, "No valid library paths found\n")
+		}
+		return env
+	}
+
+	if verbose {
+		fmt.Fprintf(os.Stderr, "Found %d valid library paths:\n", len(validPaths))
+		for i, path := range validPaths {
+			fmt.Fprintf(os.Stderr, "  %d. %s\n", i+1, path)
+		}
+	}
+
+	// Join paths with colon separator
+	libraryPath := strings.Join(validPaths, ":")
 
 	// Determine environment variable based on OS
 	libEnvVar := GetLibraryPathEnvVar()

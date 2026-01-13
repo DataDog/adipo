@@ -377,6 +377,19 @@ func (h *FormatHeader) SetDefaultExtractDir(dir string) error {
 	return nil
 }
 
+// Metadata version constants
+const (
+	MetadataVersionV0 = 0 // Legacy: library path in Reserved[0:130]
+	MetadataVersionV1 = 1 // New: library path templates in Reserved with length-prefixed format
+)
+
+// Library path flags
+const (
+	LibPathFlagNone     = 0
+	LibPathFlagTemplate = 1 << 0 // Indicates template strings (v1+ only)
+	LibPathFlagMulti    = 1 << 1 // Multiple paths stored (v1+ only)
+)
+
 // BinaryMetadata contains metadata for a single embedded binary
 // Size: 256 bytes
 type BinaryMetadata struct {
@@ -392,7 +405,8 @@ type BinaryMetadata struct {
 	Checksum         [32]byte        // SHA-256 of uncompressed binary (32 bytes)
 	Priority         uint32          // Selection priority (4 bytes)
 	Format           BinaryFormat    // Binary format (ELF/Mach-O/PE) (4 bytes)
-	Reserved         [132]byte       // Reserved for future use (132 bytes)
+	LibPathFlags     uint32          // Library path flags (4 bytes)
+	Reserved         [128]byte       // Reserved for future use (128 bytes, was 132)
 }
 
 // MarshalBinary encodes the metadata to binary format
@@ -448,6 +462,10 @@ func (m *BinaryMetadata) MarshalBinary() ([]byte, error) {
 
 	// Format
 	binary.LittleEndian.PutUint32(buf[offset:], uint32(m.Format))
+	offset += 4
+
+	// LibPathFlags
+	binary.LittleEndian.PutUint32(buf[offset:], m.LibPathFlags)
 	offset += 4
 
 	// Reserved
@@ -514,8 +532,12 @@ func (m *BinaryMetadata) UnmarshalBinary(data []byte) error {
 	m.Format = BinaryFormat(binary.LittleEndian.Uint32(data[offset:]))
 	offset += 4
 
+	// LibPathFlags
+	m.LibPathFlags = binary.LittleEndian.Uint32(data[offset:])
+	offset += 4
+
 	// Reserved
-	copy(m.Reserved[:], data[offset:offset+132])
+	copy(m.Reserved[:], data[offset:offset+128])
 
 	return nil
 }
@@ -546,15 +568,19 @@ func (m *BinaryMetadata) GetLibraryPath() string {
 	return string(pathBytes[:endIdx])
 }
 
-// SetLibraryPath sets the library path for this binary
+// SetLibraryPath sets the library path for this binary (legacy v0 format)
 // Returns error if path is too long (>128 bytes)
 func (m *BinaryMetadata) SetLibraryPath(path string) error {
 	if len(path) > 128 {
 		return errors.New("library path too long (max 128 bytes)")
 	}
 
-	// Clear the library path storage area (bytes 0-129)
-	for i := range m.Reserved[0:130] {
+	// Set to v0 format for backward compatibility
+	m.MetadataVersion = MetadataVersionV0
+	m.LibPathFlags = LibPathFlagNone
+
+	// Clear the library path storage area (bytes 0-127)
+	for i := range m.Reserved {
 		m.Reserved[i] = 0
 	}
 
@@ -567,6 +593,103 @@ func (m *BinaryMetadata) SetLibraryPath(path string) error {
 
 	// Write path data (bytes 2:2+len)
 	copy(m.Reserved[2:], []byte(path))
+
+	return nil
+}
+
+// GetLibraryPathTemplates retrieves library path templates (v1 format)
+// Returns empty slice if not set or if using legacy v0 format
+//
+// Storage format in Reserved[128]:
+// Bytes 0-1:   TemplateCount (uint16)
+// Bytes 2-3:   Template1Length (uint16)
+// Bytes 4-N:   Template1 string
+// Bytes N+1-N+2: Template2Length (uint16)
+// Bytes N+3-M:   Template2 string
+// ...
+func (m *BinaryMetadata) GetLibraryPathTemplates() []string {
+	// Only v1+ supports templates
+	if m.MetadataVersion < MetadataVersionV1 {
+		return nil
+	}
+
+	// Read template count
+	templateCount := binary.LittleEndian.Uint16(m.Reserved[0:2])
+	if templateCount == 0 || templateCount > 10 { // Sanity check
+		return nil
+	}
+
+	templates := make([]string, 0, templateCount)
+	offset := 2 // Start after count
+
+	for i := 0; i < int(templateCount); i++ {
+		// Check we have room for length field
+		if offset+2 > len(m.Reserved) {
+			break
+		}
+
+		// Read template length
+		templateLen := binary.LittleEndian.Uint16(m.Reserved[offset : offset+2])
+		offset += 2
+
+		// Check we have room for template data
+		if offset+int(templateLen) > len(m.Reserved) || templateLen == 0 {
+			break
+		}
+
+		// Read template string
+		templateBytes := m.Reserved[offset : offset+int(templateLen)]
+		templates = append(templates, string(templateBytes))
+		offset += int(templateLen)
+	}
+
+	return templates
+}
+
+// SetLibraryPathTemplates stores library path templates (v1 format)
+// Returns error if templates don't fit in Reserved space (128 bytes)
+func (m *BinaryMetadata) SetLibraryPathTemplates(templates []string) error {
+	if len(templates) == 0 {
+		return errors.New("no templates provided")
+	}
+
+	if len(templates) > 10 {
+		return errors.New("too many templates (max 10)")
+	}
+
+	// Calculate required space
+	requiredSpace := 2 // Template count
+	for _, template := range templates {
+		requiredSpace += 2 + len(template) // Length + string
+	}
+
+	if requiredSpace > len(m.Reserved) {
+		return errors.New("templates too large for metadata storage")
+	}
+
+	// Set to v1 format
+	m.MetadataVersion = MetadataVersionV1
+	m.LibPathFlags = LibPathFlagTemplate | LibPathFlagMulti
+
+	// Clear Reserved
+	for i := range m.Reserved {
+		m.Reserved[i] = 0
+	}
+
+	// Write template count
+	binary.LittleEndian.PutUint16(m.Reserved[0:2], uint16(len(templates)))
+	offset := 2
+
+	// Write each template
+	for _, template := range templates {
+		// Write length
+		binary.LittleEndian.PutUint16(m.Reserved[offset:offset+2], uint16(len(template)))
+		offset += 2
+
+		// Write template string
+		copy(m.Reserved[offset:], []byte(template))
+		offset += len(template)
+	}
 
 	return nil
 }
