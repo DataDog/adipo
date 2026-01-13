@@ -7,6 +7,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"os"
 
@@ -188,10 +189,13 @@ func main() {
 	}
 
 	// Verify checksum
-	if debug {
-		fmt.Fprintf(os.Stderr, "adipo stub: verifying checksum\n")
+	if verbose {
+		fmt.Fprintf(os.Stderr, "adipo stub: verifying binary checksum\n")
 	}
-	// TODO: Add checksum verification
+	actualChecksum := sha256.Sum256(decompressedData)
+	if actualChecksum != selectedBinary.Checksum {
+		fatal("checksum verification failed: binary has been modified or corrupted")
+	}
 
 	// Prepare environment with library path from metadata
 	env := runner.PrepareEnvironmentWithLibPath(selectedBinary, verbose)
