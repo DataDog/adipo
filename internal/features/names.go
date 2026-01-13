@@ -1,3 +1,9 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the MIT License.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2024-2026 Datadog, Inc.
+
+
 package features
 
 // X86FeatureNames maps feature bits to human-readable names
