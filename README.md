@@ -224,13 +224,13 @@ Configure library paths for binaries that require specific library versions. See
 Quick example:
 ```bash
 # Automatic glibc-hwcaps compatible paths
-adipo create -o app.fat --enable-auto-lib \
+adipo create -o app.fat --enable-lib-path \
   --binary app-v1:x86-64-v1 \
   --binary app-v3:x86-64-v3
 
 # Custom template paths
 adipo create -o app.fat \
-  --auto-lib-path "/opt/glibc-{{.Version}}/lib" \
+  --lib-path-template "/opt/glibc-{{.Version}}/lib" \
   --binary app-v1:x86-64-v1 \
   --binary app-v3:x86-64-v3
 ```

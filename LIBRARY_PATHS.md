@@ -76,7 +76,8 @@ At runtime, the fat binary:
 3. **Version Fallback** - Creates a list of compatible versions (current, then older versions)
 4. **Expands Templates** - For each version, expands all templates with that version's variables
 5. **Filters Paths** - Keeps only paths that actually exist on the system
-6. **Sets Environment** - Prepends paths to `LD_LIBRARY_PATH`/`DYLD_LIBRARY_PATH` in priority order
+6. **Deduplicates** - Removes duplicate paths that may result from template expansion
+7. **Sets Environment** - Prepends paths to `LD_LIBRARY_PATH`/`DYLD_LIBRARY_PATH` in priority order
 
 ### Example: x86-64 v3 CPU
 
@@ -101,6 +102,8 @@ Only paths that exist on disk are included. For example, if only v3 and v2 Debia
 ```bash
 LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v3:/usr/lib/x86_64-linux-gnu/glibc-hwcaps/v2
 ```
+
+**Note on deduplication**: If multiple templates expand to the same physical path, it will only appear once in the final `LD_LIBRARY_PATH`. For example, if both `/usr/lib/{{.ArchTriple}}-linux-gnu/glibc-hwcaps/{{.Version}}` and `/usr/lib/{{.ArchTriple}}-linux-gnu/glibc-hwcaps/{{.ArchVersion}}` expand to the same directory for certain version formats, the duplicate is automatically removed.
 
 ### Example: ARM64 v9.4 with Version Fallback
 
@@ -245,8 +248,10 @@ go test -tags=integration ./internal/hwcaps/...
 ## Implementation Details
 
 - Binary metadata size: 512 bytes (FormatVersion 1)
+- Metadata version: `MetadataVersionV1` indicates template-based library paths
 - Templates stored in Reserved field: 388 bytes available
 - Each template is length-prefixed (2 bytes) for efficient parsing
 - Version fallback uses explicit ARM64 version list (format.ARM64VersionFallbackOrder)
 - Paths are collected in version-first order: for each version, expand all templates
 - Template evaluation happens at runtime, not build time
+- Duplicate paths are automatically removed using a seen map during evaluation
