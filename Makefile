@@ -35,12 +35,18 @@ stub:
 	@echo "Building stub binary for current host..."
 	go build $(STUBFLAGS) -o $(STUB_BIN) ./cmd/adipo-stub
 
+## hwcaps-exec: Build the hwcaps-exec standalone binary
+hwcaps-exec:
+	@echo "Building hwcaps-exec..."
+	go build $(MAINFLAGS) -o hwcaps-exec ./cmd/hwcaps-exec
+
 ## clean: Remove built binaries
 clean:
 	@echo "Cleaning..."
 	rm -f $(MAIN_BIN) $(STUB_BIN)
 	rm -f adipo-stub adipo-stub-*
 	rm -f adipo-darwin-* adipo-linux-*
+	rm -f hwcaps-exec hwcaps-exec-*
 	rm -rf build/
 
 ## test: Run tests
@@ -88,11 +94,17 @@ mod-tidy:
 ## build-all-arch: Build for multiple OS/arch combinations
 build-all-arch:
 	@echo "Building for multiple architectures..."
+	@echo "Building adipo..."
 	@GOOS=linux GOARCH=amd64 go build $(MAINFLAGS) -o $(MAIN_BIN)-linux-amd64 ./cmd/adipo
 	@GOOS=linux GOARCH=arm64 go build $(MAINFLAGS) -o $(MAIN_BIN)-linux-arm64 ./cmd/adipo
 	@GOOS=darwin GOARCH=amd64 go build $(MAINFLAGS) -o $(MAIN_BIN)-darwin-amd64 ./cmd/adipo
 	@GOOS=darwin GOARCH=arm64 go build $(MAINFLAGS) -o $(MAIN_BIN)-darwin-arm64 ./cmd/adipo
-	@echo "Built: $(MAIN_BIN)-{linux,darwin}-{amd64,arm64}"
+	@echo "Building hwcaps-exec..."
+	@GOOS=linux GOARCH=amd64 go build $(MAINFLAGS) -o hwcaps-exec-linux-amd64 ./cmd/hwcaps-exec
+	@GOOS=linux GOARCH=arm64 go build $(MAINFLAGS) -o hwcaps-exec-linux-arm64 ./cmd/hwcaps-exec
+	@GOOS=darwin GOARCH=amd64 go build $(MAINFLAGS) -o hwcaps-exec-darwin-amd64 ./cmd/hwcaps-exec
+	@GOOS=darwin GOARCH=arm64 go build $(MAINFLAGS) -o hwcaps-exec-darwin-arm64 ./cmd/hwcaps-exec
+	@echo "Built: $(MAIN_BIN)-{linux,darwin}-{amd64,arm64} and hwcaps-exec-{linux,darwin}-{amd64,arm64}"
 
 ## stub-all-arch: Build stub for multiple architectures (for distribution)
 stub-all-arch:

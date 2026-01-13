@@ -235,6 +235,26 @@ adipo create -o app.fat \
   --binary app-v3:x86-64-v3
 ```
 
+### Hardware Capabilities Execution
+
+Execute programs with automatic library path selection based on CPU capabilities using `hwcaps-exec`. This is useful for platforms without native glibc hwcaps support or for custom library layouts.
+
+```bash
+# Auto-detect CPU and select compatible library paths
+adipo hwcaps-exec myprogram
+
+# Or use the standalone binary
+hwcaps-exec myprogram
+
+# Preview what would be executed (dry run)
+hwcaps-exec --dry-run myprogram
+
+# See detailed scanning process
+hwcaps-exec --verbose myprogram
+```
+
+The tool automatically scans standard glibc-hwcaps directories (`/usr/lib64/glibc-hwcaps/`), opt paths (`/opt/<arch>/lib`), and custom templates. See [HWCAPS_EXEC.md](HWCAPS_EXEC.md) for detailed documentation.
+
 ### Stub Discovery
 
 When creating a fat binary, adipo looks for stub binaries in this order:
