@@ -245,6 +245,51 @@ func (f BinaryFormat) String() string {
 	}
 }
 
+// ValidateBinaryFormat checks if the binary data matches the claimed format
+// by examining the magic bytes at the start of the binary.
+func ValidateBinaryFormat(data []byte, expectedFormat BinaryFormat) error {
+	if len(data) < 4 {
+		return errors.New("binary too small to determine format")
+	}
+
+	// Check ELF magic: 0x7f 'E' 'L' 'F'
+	isELF := len(data) >= 4 && data[0] == 0x7f && data[1] == 'E' && data[2] == 'L' && data[3] == 'F'
+
+	// Check Mach-O magic: 0xfeedface (32-bit), 0xfeedfacf (64-bit), or 0xcafebabe (universal)
+	isMachO := false
+	if len(data) >= 4 {
+		magic := uint32(data[0]) | uint32(data[1])<<8 | uint32(data[2])<<16 | uint32(data[3])<<24
+		isMachO = magic == 0xfeedface || magic == 0xfeedfacf || magic == 0xcafebabe ||
+			magic == 0xcefaedfe || magic == 0xcffaedfe // Reverse byte order variants
+	}
+
+	// Check PE magic: 'M' 'Z' at start, then PE signature at offset specified by header
+	isPE := len(data) >= 2 && data[0] == 'M' && data[1] == 'Z'
+
+	// Validate format matches
+	switch expectedFormat {
+	case FormatELF:
+		if !isELF {
+			return errors.New("binary format mismatch: expected ELF but binary has different magic bytes")
+		}
+	case FormatMachO:
+		if !isMachO {
+			return errors.New("binary format mismatch: expected Mach-O but binary has different magic bytes")
+		}
+	case FormatPE:
+		if !isPE {
+			return errors.New("binary format mismatch: expected PE but binary has different magic bytes")
+		}
+	case FormatUnknown:
+		// Unknown format is not an error, but we can't validate it
+		return nil
+	default:
+		return errors.New("invalid binary format enum value")
+	}
+
+	return nil
+}
+
 // FormatFlags represents feature flags in the header
 type FormatFlags uint64
 

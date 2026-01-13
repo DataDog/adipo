@@ -197,6 +197,15 @@ func main() {
 		fatal("checksum verification failed: binary has been modified or corrupted")
 	}
 
+	// Validate binary format matches claimed format
+	if verbose {
+		fmt.Fprintf(os.Stderr, "adipo stub: validating binary format (%s)\n",
+			selectedBinary.Format.String())
+	}
+	if err := format.ValidateBinaryFormat(decompressedData, selectedBinary.Format); err != nil {
+		fatal("binary format validation failed: %v", err)
+	}
+
 	// Prepare environment with library path from metadata
 	env := runner.PrepareEnvironmentWithLibPath(selectedBinary, verbose)
 

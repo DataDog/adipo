@@ -133,6 +133,11 @@ func (r *Reader) parse() error {
 		if meta.OriginalSize == 0 {
 			return fmt.Errorf("binary %d: invalid original size: 0", i)
 		}
+
+		// Validate binary format enum
+		if meta.Format > FormatPE {
+			return fmt.Errorf("binary %d: invalid format value: %d", i, meta.Format)
+		}
 	}
 
 	return nil
