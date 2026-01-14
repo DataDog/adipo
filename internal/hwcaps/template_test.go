@@ -195,8 +195,8 @@ func TestTemplateEvaluationWithDirectories(t *testing.T) {
 	// Create temporary directory structure
 	tmpDir := t.TempDir()
 
-	// Create mock directory structures for x86-64
-	x86v3Path := filepath.Join(tmpDir, "usr/lib/x86_64-linux-gnu/glibc-hwcaps/v3")
+	// Create mock directory structures for x86-64 (using real glibc-hwcaps naming)
+	x86v3Path := filepath.Join(tmpDir, "usr/lib/x86_64-linux-gnu/glibc-hwcaps/x86-64-v3")
 	x86v2Path := filepath.Join(tmpDir, "usr/lib64/glibc-hwcaps/x86-64-v2")
 
 	if err := os.MkdirAll(x86v3Path, 0755); err != nil {
@@ -206,9 +206,9 @@ func TestTemplateEvaluationWithDirectories(t *testing.T) {
 		t.Fatalf("failed to create test directory: %v", err)
 	}
 
-	// Test templates with tmpDir prefix
+	// Test templates with tmpDir prefix (using ArchVersion for x86-64)
 	templates := []string{
-		tmpDir + "/usr/lib/{{.ArchTriple}}-linux-gnu/glibc-hwcaps/{{.Version}}",
+		tmpDir + "/usr/lib/{{.ArchTriple}}-linux-gnu/glibc-hwcaps/{{.ArchVersion}}",
 		tmpDir + "/usr/lib64/glibc-hwcaps/{{.ArchVersion}}",
 	}
 
@@ -323,12 +323,12 @@ func TestNonExistentPaths(t *testing.T) {
 func TestPathOrdering(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create multiple directories
+	// Create multiple directories (using real x86-64 glibc-hwcaps naming)
 	paths := []string{
-		filepath.Join(tmpDir, "usr/lib/x86_64-linux-gnu/glibc-hwcaps/v3"), // Debian multiarch, exact
-		filepath.Join(tmpDir, "usr/lib64/glibc-hwcaps/x86-64-v3"),         // RedHat, exact
-		filepath.Join(tmpDir, "usr/lib/x86_64-linux-gnu/glibc-hwcaps/v2"), // Debian multiarch, fallback
-		filepath.Join(tmpDir, "usr/lib64/glibc-hwcaps/x86-64-v2"),         // RedHat, fallback
+		filepath.Join(tmpDir, "usr/lib/x86_64-linux-gnu/glibc-hwcaps/x86-64-v3"), // Debian multiarch, exact
+		filepath.Join(tmpDir, "usr/lib64/glibc-hwcaps/x86-64-v3"),                // RedHat, exact
+		filepath.Join(tmpDir, "usr/lib/x86_64-linux-gnu/glibc-hwcaps/x86-64-v2"), // Debian multiarch, fallback
+		filepath.Join(tmpDir, "usr/lib64/glibc-hwcaps/x86-64-v2"),                // RedHat, fallback
 	}
 
 	for _, p := range paths {
@@ -338,7 +338,7 @@ func TestPathOrdering(t *testing.T) {
 	}
 
 	templates := []string{
-		tmpDir + "/usr/lib/{{.ArchTriple}}-linux-gnu/glibc-hwcaps/{{.Version}}",
+		tmpDir + "/usr/lib/{{.ArchTriple}}-linux-gnu/glibc-hwcaps/{{.ArchVersion}}",
 		tmpDir + "/usr/lib64/glibc-hwcaps/{{.ArchVersion}}",
 	}
 
