@@ -26,6 +26,16 @@
   - Full mode: Verify each binary checksum
   - Flag: `--skip-verify` to disable for faster startup
 
+### Process Name Visibility with memfd
+- **Issue**: When using memfd execution, process monitoring tools (`top`, `ps`, APM) display "memfd:filename (deleted)" instead of proper process names
+- **Impact**: Breaks process monitoring in production environments (Datadog APM, etc.)
+- **Solutions**:
+  - Add `prctl(PR_SET_NAME)` in stub to fix process comm name (90% fix, limited to 15 chars)
+  - Document `ADIPO_PREFER_DISK=1` for monitored environments
+  - Auto-detect Datadog agent and default to disk extraction
+  - Consider making disk extraction the default, memfd opt-in
+- **Trade-off**: Performance (memfd) vs observability (disk extraction)
+
 ## Cross-Platform Support
 
 ### macOS Support (Mach-O Format)

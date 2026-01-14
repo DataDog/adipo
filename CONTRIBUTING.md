@@ -1,6 +1,6 @@
 # Welcome
 
-Welcome! We are glad you are interested in contributing to <PROJECT_NAME>. This guide will help you understand the requirements and guidelines to improve your contributor experience.
+Welcome! We are glad you are interested in contributing to adipo. This guide will help you understand the requirements and guidelines to improve your contributor experience.
 
 ## Contributing to code
 
@@ -25,19 +25,66 @@ If, after the discussion, the proposal gets rejected, the team will give you an 
 If you have identified an issue that is already labeled as `type/bug` that hasn’t been assigned to anyone, feel free to claim it, and ask a maintainer to add you as assignee.
 Once you have some code ready, open a PR, [linking it to the issue](https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue#manually-linking-a-pull-request-to-an-issue-using-the-pull-request-sidebar). Take into account that if the changes to fix the bug are not trivial, you need to follow the RFC process as well to discuss the options with the maintainers.
 
-### Signing the CLA
-
-This repository requires you to sign the [Contributor License Agreement](<LINK_TO_CLA_IF_IT_EXISTS>).
-
 ### Setting up your development environment
 
-_Add here instructions on how to set up the development environment for your project_
+#### Prerequisites
+
+- Go 1.23 or later (required for ARM64 v8.1+ support)
+- goreleaser (for building releases): `brew install goreleaser` or [install from source](https://goreleaser.com/install/)
+- golangci-lint (for linting): `brew install golangci-lint` or [install from source](https://golangci-lint.run/usage/install/)
+
+#### Building from source
+
+```bash
+# Clone the repository
+git clone https://github.com/DataDog/adipo.git
+cd adipo
+
+# Build for your current platform
+make build
+
+# Or build for all platforms
+make build-all
+
+# Install to $GOPATH/bin
+make install-snapshot
+```
+
+The build outputs will be in the `dist/` directory.
 
 ### Testing and linting your changes
 
-_Add here instructions on how to run the tests in a local environment if possible_
+Run tests before submitting your changes:
 
-_Also add instructions for running any linters_
+```bash
+# Run all tests
+make test
+
+# Run tests with coverage report
+make test-coverage
+
+# Run integration tests (Linux)
+make integration-test-linux
+
+# Run integration tests (macOS - requires Apple Silicon)
+make integration-test-macos
+```
+
+Lint your code:
+
+```bash
+# Format code
+make fmt
+
+# Run go vet
+make vet
+
+# Run golangci-lint
+make lint
+
+# Run all checks (fmt, vet, lint, test)
+make check
+```
 
 ### AI code assistants
 
@@ -52,7 +99,7 @@ This repository includes an [AGENTS.md](https://agents.md/) that your AI code as
 
 ### Contributing to reporting bugs
 
-If you think you have found a bug in <PROJECT_NAME> feel free to report it. When creating issues, you will be presented with a template to fill. Please, fill as much as you can from that template, including steps to reproduce your issue, so we can address it quicker.
+If you think you have found a bug in adipo feel free to report it. When creating issues, you will be presented with a template to fill. Please, fill as much as you can from that template, including steps to reproduce your issue, so we can address it quicker.
 
 ### Contributing to triaging issues
 

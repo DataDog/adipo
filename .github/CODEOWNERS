@@ -1,0 +1,4 @@
+# Default code owners for everything in the repo
+# These owners will be requested for review when someone opens a pull request
+# TODO: Create @DataDog/adipo-maintainers team and replace @iksaif with the team
+* @iksaif
