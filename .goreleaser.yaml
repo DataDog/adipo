@@ -5,8 +5,8 @@ before:
   hooks:
     # Tidy dependencies
     - go mod tidy
-    # Run tests
-    - go test ./...
+    # Run tests (skip in snapshot mode to avoid exec format errors during cross-compilation)
+    - sh -c '[ -z "$GORELEASER_CURRENT_TAG" ] || go test ./...'
 
 # Build configuration
 builds:
