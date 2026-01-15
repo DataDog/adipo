@@ -1,4 +1,15 @@
+<p align="center">
+  <img src="logo.svg" alt="adipo logo" width="200"/>
+</p>
+
 # adipo - Architecture-Aware Fat Binaries
+
+[![CI](https://github.com/DataDog/adipo/actions/workflows/ci.yml/badge.svg)](https://github.com/DataDog/adipo/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/DataDog/adipo)](https://github.com/DataDog/adipo/releases)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/DataDog/adipo)](https://github.com/DataDog/adipo/blob/main/go.mod)
+[![License](https://img.shields.io/github/license/DataDog/adipo)](https://github.com/DataDog/adipo/blob/main/LICENSE)
+[![Go Reference](https://pkg.go.dev/badge/github.com/DataDog/adipo.svg)](https://pkg.go.dev/github.com/DataDog/adipo)
+[![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos-blue)](#installation)
 
 `adipo` creates and runs fat binaries containing multiple versions of the same executable, each optimized for different CPU micro-architectures. Unlike Apple's `lipo` which targets different architectures (x86-64 vs ARM64), `adipo` targets **micro-architecture versions** within the same architecture family.
 

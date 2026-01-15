@@ -1,0 +1,121 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle (representing "fat" binary) -->
+  <circle cx="100" cy="100" r="85" fill="#6B4FBB" opacity="0.9"/>
+
+  <!-- Layered architecture rings (representing multiple versions) -->
+  <circle cx="100" cy="100" r="70" fill="none" stroke="#9B7EDE" stroke-width="3" opacity="0.8"/>
+  <circle cx="100" cy="100" r="55" fill="none" stroke="#C4B0F0" stroke-width="3" opacity="0.8"/>
+  <circle cx="100" cy="100" r="40" fill="none" stroke="#E5DCFF" stroke-width="3" opacity="0.8"/>
+
+  <!-- CPU chip 1 (top) -->
+  <g transform="translate(100, 50)">
+    <rect x="-15" y="-15" width="30" height="30" rx="3" fill="#FFFFFF" opacity="0.95"/>
+    <!-- Pins -->
+    <rect x="-20" y="-10" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="-20" y="-3" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="-20" y="4" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="15" y="-10" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="15" y="-3" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="15" y="4" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="-10" y="-20" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="-3" y="-20" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="4" y="-20" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="-10" y="15" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="-3" y="15" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="4" y="15" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="-10" y="-10" width="20" height="20" rx="1" fill="#FFE66D" opacity="0.4"/>
+    <circle cx="0" cy="0" r="5" fill="#FFE66D" opacity="0.5"/>
+  </g>
+
+  <!-- CPU chip 2 (right) -->
+  <g transform="translate(150, 100)">
+    <rect x="-15" y="-15" width="30" height="30" rx="3" fill="#FFFFFF" opacity="0.95"/>
+    <!-- Pins -->
+    <rect x="-20" y="-10" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="-20" y="-3" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="-20" y="4" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="15" y="-10" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="15" y="-3" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="15" y="4" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="-10" y="-20" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="-3" y="-20" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="4" y="-20" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="-10" y="15" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="-3" y="15" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="4" y="15" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="-10" y="-10" width="20" height="20" rx="1" fill="#4ECDC4" opacity="0.4"/>
+    <circle cx="0" cy="0" r="5" fill="#4ECDC4" opacity="0.5"/>
+  </g>
+
+  <!-- CPU chip 3 (bottom) -->
+  <g transform="translate(100, 150)">
+    <rect x="-15" y="-15" width="30" height="30" rx="3" fill="#FFFFFF" opacity="0.95"/>
+    <!-- Pins -->
+    <rect x="-20" y="-10" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="-20" y="-3" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="-20" y="4" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="15" y="-10" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="15" y="-3" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="15" y="4" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="-10" y="-20" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="-3" y="-20" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="4" y="-20" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="-10" y="15" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="-3" y="15" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="4" y="15" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="-10" y="-10" width="20" height="20" rx="1" fill="#95E1D3" opacity="0.4"/>
+    <circle cx="0" cy="0" r="5" fill="#95E1D3" opacity="0.5"/>
+  </g>
+
+  <!-- CPU chip 4 (left) -->
+  <g transform="translate(50, 100)">
+    <rect x="-15" y="-15" width="30" height="30" rx="3" fill="#FFFFFF" opacity="0.95"/>
+    <!-- Pins -->
+    <rect x="-20" y="-10" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="-20" y="-3" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="-20" y="4" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="15" y="-10" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="15" y="-3" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="15" y="4" width="5" height="3" fill="#FFFFFF"/>
+    <rect x="-10" y="-20" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="-3" y="-20" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="4" y="-20" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="-10" y="15" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="-3" y="15" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="4" y="15" width="3" height="5" fill="#FFFFFF"/>
+    <rect x="-10" y="-10" width="20" height="20" rx="1" fill="#FF6B9D" opacity="0.4"/>
+    <circle cx="0" cy="0" r="5" fill="#FF6B9D" opacity="0.5"/>
+  </g>
+
+  <!-- Magic wand (center) -->
+  <g transform="translate(100, 100) rotate(-45)">
+    <!-- Wand stick -->
+    <line x1="0" y1="5" x2="0" y2="25" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+
+    <!-- Wand star tip -->
+    <path d="M -5,-5 L 0,-1 L 5,-5 L 1,0 L 5,5 L 0,1 L -5,5 L -1,0 Z" fill="#FFE66D" stroke="#FFFFFF" stroke-width="1"/>
+  </g>
+
+  <!-- Sparkles around the wand (center) -->
+  <g fill="#FFE66D">
+    <!-- Sparkles top-left of center -->
+    <circle cx="85" cy="85" r="2" opacity="0.8"/>
+    <circle cx="90" cy="80" r="1.5" opacity="0.7"/>
+
+    <!-- Sparkles top-right of center -->
+    <circle cx="115" cy="85" r="2" opacity="0.8"/>
+    <circle cx="110" cy="80" r="1.5" opacity="0.7"/>
+
+    <!-- Sparkles bottom-left of center -->
+    <circle cx="85" cy="115" r="2" opacity="0.8"/>
+    <circle cx="80" cy="110" r="1.5" opacity="0.7"/>
+
+    <!-- Sparkles bottom-right of center -->
+    <circle cx="115" cy="115" r="2" opacity="0.8"/>
+    <circle cx="120" cy="110" r="1.5" opacity="0.7"/>
+
+    <!-- Tiny sparkles -->
+    <circle cx="95" cy="95" r="1" opacity="0.6"/>
+    <circle cx="105" cy="95" r="1" opacity="0.6"/>
+  </g>
+</svg>
