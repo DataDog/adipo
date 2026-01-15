@@ -89,7 +89,6 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		defer cleanup()
 	} else {
 		analysisTarget = binaryPath
-		cleanup = func() {} // No-op cleanup
 	}
 
 	// Create analyzer

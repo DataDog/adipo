@@ -32,7 +32,7 @@ func (g *MarchGenerator) Generate(version format.ArchVersion, detectedFeatures u
 	case format.ArchARM64:
 		return g.generateARMMarch(version, detectedFeatures)
 	default:
-		return fmt.Sprintf("-march=unknown")
+		return "-march=unknown"
 	}
 }
 
