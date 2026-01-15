@@ -130,25 +130,28 @@ const (
 const (
 	ARM64_Unknown ArchVersion = 0
 	ARM64_V8_0    ArchVersion = 1
-	ARM64_V8_1    ArchVersion = 2
-	ARM64_V8_2    ArchVersion = 3
-	ARM64_V8_3    ArchVersion = 4
-	ARM64_V8_4    ArchVersion = 5
-	ARM64_V8_5    ArchVersion = 8
-	ARM64_V8_6    ArchVersion = 9
-	ARM64_V8_7    ArchVersion = 10
-	ARM64_V8_8    ArchVersion = 11
-	ARM64_V8_9    ArchVersion = 12
-	ARM64_V9_0    ArchVersion = 6
-	ARM64_V9_1    ArchVersion = 7
-	ARM64_V9_2    ArchVersion = 13
-	ARM64_V9_3    ArchVersion = 14
-	ARM64_V9_4    ArchVersion = 15
-	ARM64_V9_5    ArchVersion = 16
+	ARM64_V8      ArchVersion = 2  // Alias for glibc-hwcaps: v8 directory
+	ARM64_V8_1    ArchVersion = 3
+	ARM64_V8_2    ArchVersion = 4
+	ARM64_V8_3    ArchVersion = 5
+	ARM64_V8_4    ArchVersion = 6
+	ARM64_V8_5    ArchVersion = 7
+	ARM64_V8_6    ArchVersion = 8
+	ARM64_V8_7    ArchVersion = 9
+	ARM64_V8_8    ArchVersion = 10
+	ARM64_V8_9    ArchVersion = 11
+	ARM64_V9_0    ArchVersion = 12
+	ARM64_V9      ArchVersion = 13 // Alias for glibc-hwcaps: v9 directory
+	ARM64_V9_1    ArchVersion = 14
+	ARM64_V9_2    ArchVersion = 15
+	ARM64_V9_3    ArchVersion = 16
+	ARM64_V9_4    ArchVersion = 17
+	ARM64_V9_5    ArchVersion = 18
 )
 
 // ARM64VersionFallbackOrder defines the canonical ordering of ARM64 versions from newest to oldest.
 // This is used for version fallback chains (e.g., v9.4 can fall back to v9.0, v8.9, etc.).
+// Includes ARM64_V9 and ARM64_V8 aliases for glibc-hwcaps naming (v9 instead of v9.0).
 // IMPORTANT: When adding new ARM64 versions (e.g., ARM64_V9_6), add them to this list in the correct position.
 var ARM64VersionFallbackOrder = []ArchVersion{
 	ARM64_V9_5,
@@ -157,6 +160,7 @@ var ARM64VersionFallbackOrder = []ArchVersion{
 	ARM64_V9_2,
 	ARM64_V9_1,
 	ARM64_V9_0,
+	ARM64_V9, // Alias for glibc-hwcaps: v9 directory
 	ARM64_V8_9,
 	ARM64_V8_8,
 	ARM64_V8_7,
@@ -167,6 +171,7 @@ var ARM64VersionFallbackOrder = []ArchVersion{
 	ARM64_V8_2,
 	ARM64_V8_1,
 	ARM64_V8_0,
+	ARM64_V8, // Alias for glibc-hwcaps: v8 directory
 }
 
 // String returns the version string for the given architecture.
@@ -220,6 +225,10 @@ func (v ArchVersion) String(arch Architecture) string {
 			return "v9.4"
 		case ARM64_V9_5:
 			return "v9.5"
+		case ARM64_V8:
+			return "v8"
+		case ARM64_V9:
+			return "v9"
 		default:
 			return "unknown"
 		}

@@ -24,8 +24,10 @@ func TestArchVersionString(t *testing.T) {
 		{"x86-64 v3", X86_64_V3, ArchX86_64, "v3"},
 		{"x86-64 v4", X86_64_V4, ArchX86_64, "v4"},
 		{"ARM64 v8.0", ARM64_V8_0, ArchARM64, "v8.0"},
+		{"ARM64 v8", ARM64_V8, ArchARM64, "v8"},
 		{"ARM64 v8.1", ARM64_V8_1, ArchARM64, "v8.1"},
 		{"ARM64 v9.0", ARM64_V9_0, ArchARM64, "v9.0"},
+		{"ARM64 v9", ARM64_V9, ArchARM64, "v9"},
 		{"unknown version", ArchVersion(99), ArchX86_64, "unknown"},
 	}
 

@@ -115,16 +115,18 @@ func TestVersionFallbackChain(t *testing.T) {
 			},
 		},
 		{
-			name:          "ARM64 v9.4 fallback to v8.0",
+			name:          "ARM64 v9.4 fallback to v8",
 			arch:          format.ArchARM64,
 			version:       format.ARM64_V9_4,
 			expectedFirst: format.ARM64_V9_4,
-			expectedLast:  format.ARM64_V8_0,
+			expectedLast:  format.ARM64_V8,
 			expectedContains: []format.ArchVersion{
 				format.ARM64_V9_4,
-				format.ARM64_V9_0, // .0 variant
+				format.ARM64_V9_0,
+				format.ARM64_V9, // glibc-hwcaps alias
 				format.ARM64_V8_9,
 				format.ARM64_V8_0,
+				format.ARM64_V8, // glibc-hwcaps alias
 			},
 		},
 		{
@@ -132,11 +134,13 @@ func TestVersionFallbackChain(t *testing.T) {
 			arch:          format.ArchARM64,
 			version:       format.ARM64_V9_0,
 			expectedFirst: format.ARM64_V9_0,
-			expectedLast:  format.ARM64_V8_0,
+			expectedLast:  format.ARM64_V8,
 			expectedContains: []format.ArchVersion{
 				format.ARM64_V9_0,
+				format.ARM64_V9, // glibc-hwcaps alias
 				format.ARM64_V8_9,
 				format.ARM64_V8_0,
+				format.ARM64_V8, // glibc-hwcaps alias
 			},
 		},
 		{
@@ -144,12 +148,13 @@ func TestVersionFallbackChain(t *testing.T) {
 			arch:          format.ArchARM64,
 			version:       format.ARM64_V8_5,
 			expectedFirst: format.ARM64_V8_5,
-			expectedLast:  format.ARM64_V8_0,
+			expectedLast:  format.ARM64_V8,
 			expectedContains: []format.ArchVersion{
 				format.ARM64_V8_5,
-				format.ARM64_V8_0, // .0 variant
 				format.ARM64_V8_4,
 				format.ARM64_V8_3,
+				format.ARM64_V8_0,
+				format.ARM64_V8, // glibc-hwcaps alias
 			},
 		},
 	}
