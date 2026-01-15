@@ -61,15 +61,18 @@ jobs:
           # Build the main binary
           make build
 
+          # Copy binaries from dist/ directories to current directory
+          # GoReleaser builds to dist/<binary>_<os>_<arch>_<version>/
+          cp dist/adipo_${GOOS}_${GOARCH}*/adipo ./adipo
+          cp dist/adipo-stub_${GOOS}_${GOARCH}*/adipo-stub-${GOOS}-${GOARCH} ./
+
           # Set binary name based on platform
           BINARY_NAME="adipo"
+          STUB_NAME="adipo-stub-${GOOS}-${GOARCH}"
+
           if [ "$GOOS" = "windows" ]; then
             BINARY_NAME="adipo.exe"
           fi
-
-          # Build standalone stub for this platform
-          STUB_NAME="adipo-stub-${GOOS}-${GOARCH}"
-          go build -trimpath -ldflags='-s -w' -o "${STUB_NAME}" ./cmd/adipo-stub
 
           # Create release directory
           mkdir -p release
