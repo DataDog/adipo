@@ -35,12 +35,18 @@ var X86FeatureNames = map[uint64]string{
 	X86_OSXSAVE:      "osxsave",
 	X86_CMPXCHG16B:   "cmpxchg16b",
 	X86_LAHF:         "lahf",
+	X86_SHA:          "sha",
+	X86_GFNI:         "gfni",
+	X86_VAES:         "vaes",
+	X86_VPCLMULQDQ:   "vpclmulqdq",
+	X86_AVX512BF16:   "avx512bf16",
 }
 
 // ARMFeatureNames maps feature bits to human-readable names
+// Note: ARM_NEON is an alias for ARM_ASIMD, so we only include ASIMD in the map
 var ARMFeatureNames = map[uint64]string{
 	ARM_FP:           "fp",
-	ARM_ASIMD:        "asimd",
+	ARM_ASIMD:        "asimd",  // Also known as NEON
 	ARM_AES:          "aes",
 	ARM_PMULL:        "pmull",
 	ARM_SHA1:         "sha1",

@@ -35,12 +35,18 @@ const (
 	X86_OSXSAVE      uint64 = 1 << 24
 	X86_CMPXCHG16B   uint64 = 1 << 25
 	X86_LAHF         uint64 = 1 << 26
+	X86_SHA          uint64 = 1 << 27  // SHA-NI
+	X86_GFNI         uint64 = 1 << 28  // Galois Field instructions
+	X86_VAES         uint64 = 1 << 29  // Vector AES
+	X86_VPCLMULQDQ   uint64 = 1 << 30  // Vector carry-less multiply
+	X86_AVX512BF16   uint64 = 1 << 31  // AVX-512 BFloat16
 )
 
 // ARM64 feature bitmasks (for RequiredFeatures uint64)
 const (
 	ARM_FP           uint64 = 1 << 0
 	ARM_ASIMD        uint64 = 1 << 1
+	ARM_NEON         uint64 = ARM_ASIMD  // Alias for ASIMD
 	ARM_AES          uint64 = 1 << 2
 	ARM_PMULL        uint64 = 1 << 3
 	ARM_SHA1         uint64 = 1 << 4

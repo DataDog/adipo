@@ -167,9 +167,11 @@ func (d *Disassembler) Disassemble(binaryPath string, maxInstructions int) ([]In
 }
 
 // parseLine parses a single line of objdump output
-// Expected format: "  address: <tab> mnemonic <tab> operands"
-// Example: "  40053b:       mov    %rsp,%rbp"
-var insnRegex = regexp.MustCompile(`^\s*([0-9a-fA-F]+):\s+([a-zA-Z][a-zA-Z0-9.]*)\s*(.*)$`)
+// Expected format: "  address: <tab> [raw_bytes] mnemonic <tab> operands"
+// GNU:  "  40053b:       mov    %rsp,%rbp"
+// LLVM: "  406630: e5e1fcbf     	st1d	{ z31.d }, p7, [x5, #0x1, mul vl]"
+// The raw bytes are 8 hex digits (32-bit instruction encoding) followed by whitespace
+var insnRegex = regexp.MustCompile(`^\s*([0-9a-fA-F]+):\s+(?:[0-9a-fA-F]{8}\s+)?([a-zA-Z][a-zA-Z0-9.]*)(?:\s+(.*))?$`)
 
 func (d *Disassembler) parseLine(line string) (Instruction, bool) {
 	// Skip empty lines and header lines
@@ -192,11 +194,19 @@ func (d *Disassembler) parseLine(line string) (Instruction, bool) {
 
 	// Extract mnemonic and operands
 	mnemonic := strings.ToLower(matches[2])
-	operands := strings.TrimSpace(matches[3])
+	operands := ""
+	if len(matches) > 3 {
+		operands = strings.TrimSpace(matches[3])
+	}
 
-	// Remove comments (everything after #)
-	if idx := strings.Index(operands, "#"); idx != -1 {
-		operands = strings.TrimSpace(operands[:idx])
+	// Remove comments (everything after "# " with space after hash)
+	// This preserves ARM immediate values like #0x1, #2 while removing "# comment"
+	// Comments have a space after #, immediates don't
+	for _, sep := range []string{" # ", "\t# "} {
+		if idx := strings.Index(operands, sep); idx != -1 {
+			operands = strings.TrimSpace(operands[:idx])
+			break
+		}
 	}
 
 	return Instruction{

@@ -50,6 +50,55 @@ var x86InstructionMappings = []InstructionMapping{
 	{Prefix: "vpconflict", Features: features.X86_AVX512CD},
 	{Prefix: "vplzcnt", Features: features.X86_AVX512CD},
 
+	// AVX-512 BW (Byte/Word) - check for k registers or specific BW instructions
+	{Prefix: "vpaddb", RequireReg: "k", Features: features.X86_AVX512BW},
+	{Prefix: "vpaddw", RequireReg: "k", Features: features.X86_AVX512BW},
+	{Prefix: "vpsubb", RequireReg: "k", Features: features.X86_AVX512BW},
+	{Prefix: "vpsubw", RequireReg: "k", Features: features.X86_AVX512BW},
+	{Prefix: "vpmullw", RequireReg: "zmm", Features: features.X86_AVX512BW},
+	{Prefix: "vpacksswb", RequireReg: "zmm", Features: features.X86_AVX512BW},
+	{Prefix: "vpackuswb", RequireReg: "zmm", Features: features.X86_AVX512BW},
+	{Prefix: "vpmovwb", Features: features.X86_AVX512BW},
+	{Prefix: "vpmovswb", Features: features.X86_AVX512BW},
+	{Prefix: "vpmovuswb", Features: features.X86_AVX512BW},
+
+	// AVX-512 DQ (Doubleword/Quadword)
+	{Prefix: "vpmullq", Features: features.X86_AVX512DQ},
+	{Prefix: "vrangeps", Features: features.X86_AVX512DQ},
+	{Prefix: "vrangepd", Features: features.X86_AVX512DQ},
+	{Prefix: "vreduceps", Features: features.X86_AVX512DQ},
+	{Prefix: "vreducepd", Features: features.X86_AVX512DQ},
+	{Prefix: "vcvtqq2ps", Features: features.X86_AVX512DQ},
+	{Prefix: "vcvtqq2pd", Features: features.X86_AVX512DQ},
+	{Prefix: "vcvtps2qq", Features: features.X86_AVX512DQ},
+	{Prefix: "vcvtpd2qq", Features: features.X86_AVX512DQ},
+	{Prefix: "vfpclasspd", Features: features.X86_AVX512DQ},
+	{Prefix: "vfpclassps", Features: features.X86_AVX512DQ},
+
+	// AVX-512 IFMA (Integer Fused Multiply Add)
+	{Prefix: "vpmadd52luq", Features: features.X86_AVX512IFMA},
+	{Prefix: "vpmadd52huq", Features: features.X86_AVX512IFMA},
+
+	// AVX-512 VBMI (Vector Byte Manipulation Instructions)
+	{Prefix: "vpermt2b", Features: features.X86_AVX512VBMI},
+	{Prefix: "vpermi2b", Features: features.X86_AVX512VBMI},
+	{Prefix: "vpermb", Features: features.X86_AVX512VBMI},
+	{Prefix: "vpmultishiftqb", Features: features.X86_AVX512VBMI},
+
+	// AVX-512 VBMI2
+	{Prefix: "vpcompressb", Features: features.X86_AVX512VBMI2},
+	{Prefix: "vpcompressw", Features: features.X86_AVX512VBMI2},
+	{Prefix: "vpexpandb", Features: features.X86_AVX512VBMI2},
+	{Prefix: "vpexpandw", Features: features.X86_AVX512VBMI2},
+	{Prefix: "vpshldw", Features: features.X86_AVX512VBMI2},
+	{Prefix: "vpshldd", Features: features.X86_AVX512VBMI2},
+	{Prefix: "vpshldq", Features: features.X86_AVX512VBMI2},
+
+	// AVX-512 BITALG
+	{Prefix: "vpopcntb", Features: features.X86_AVX512BITALG},
+	{Prefix: "vpopcntw", Features: features.X86_AVX512BITALG},
+	{Prefix: "vpshufbitqmb", Features: features.X86_AVX512BITALG},
+
 	// FMA instructions (vfmadd*, vfmsub*, vfnmadd*, vfnmsub*)
 	{Prefix: "vfmadd", Features: features.X86_FMA},
 	{Prefix: "vfmsub", Features: features.X86_FMA},
@@ -127,6 +176,29 @@ var x86InstructionMappings = []InstructionMapping{
 	// F16C instructions
 	{Prefix: "vcvtph2ps", Features: features.X86_F16C},
 	{Prefix: "vcvtps2ph", Features: features.X86_F16C},
+
+	// SHA-NI (SHA extensions) - very common in crypto workloads
+	{Prefix: "sha1rnds4", Features: features.X86_SHA},
+	{Prefix: "sha1nexte", Features: features.X86_SHA},
+	{Prefix: "sha1msg1", Features: features.X86_SHA},
+	{Prefix: "sha1msg2", Features: features.X86_SHA},
+	{Prefix: "sha256rnds2", Features: features.X86_SHA},
+	{Prefix: "sha256msg1", Features: features.X86_SHA},
+	{Prefix: "sha256msg2", Features: features.X86_SHA},
+
+	// VAES - Vector AES instructions
+	{Prefix: "vaesenc", Features: features.X86_VAES},
+	{Prefix: "vaesenclast", Features: features.X86_VAES},
+	{Prefix: "vaesdec", Features: features.X86_VAES},
+	{Prefix: "vaesdeclast", Features: features.X86_VAES},
+
+	// VPCLMULQDQ - Vector carry-less multiply
+	{Prefix: "vpclmulqdq", Features: features.X86_VPCLMULQDQ},
+
+	// GFNI - Galois Field instructions
+	{Prefix: "gf2p8affineinvqb", Features: features.X86_GFNI},
+	{Prefix: "gf2p8affineqb", Features: features.X86_GFNI},
+	{Prefix: "gf2p8mulb", Features: features.X86_GFNI},
 
 	// BMI1 instructions
 	{Prefix: "andn", Features: features.X86_BMI1},

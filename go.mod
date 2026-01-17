@@ -3,6 +3,7 @@ module github.com/DataDog/adipo
 go 1.24.0
 
 require (
+	github.com/bnagy/gapstone v0.0.0-20190828052830-ede92aaeaba7
 	github.com/klauspost/compress v1.18.2
 	github.com/olekukonko/tablewriter v1.1.2
 	github.com/pierrec/lz4/v4 v4.1.23

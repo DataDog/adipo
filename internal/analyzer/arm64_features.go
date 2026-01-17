@@ -14,6 +14,92 @@ import (
 
 // armInstructionMappings maps ARM64 instruction mnemonics to required CPU features
 var armInstructionMappings = []InstructionMapping{
+	// NEON/ASIMD baseline instructions (v registers for vector operations)
+	// These are universal in ARMv8.0+, mark as ASIMD/NEON
+	{Prefix: "fadd", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "fsub", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "fmul", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "fdiv", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "fmax", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "fmin", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "fmla", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "fmls", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "fneg", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "fabs", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "fsqrt", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "frecpe", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "frsqrte", RequireReg: "v", Features: features.ARM_ASIMD},
+
+	// NEON integer vector operations
+	{Prefix: "add", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "sub", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "mul", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "mla", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "mls", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "smax", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "smin", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "umax", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "umin", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "addp", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "smull", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "umull", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "saddl", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "uaddl", RequireReg: "v", Features: features.ARM_ASIMD},
+
+	// NEON load/store (v register forms, not SVE z registers)
+	{Prefix: "ld1", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "ld2", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "ld3", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "ld4", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "st1", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "st2", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "st3", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "st4", RequireReg: "v", Features: features.ARM_ASIMD},
+
+	// NEON vector manipulation
+	{Prefix: "dup", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "mov", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "ext", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "zip", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "uzp", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "trn", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "ins", RequireReg: "v", Features: features.ARM_ASIMD},
+	{Prefix: "tbl", Features: features.ARM_ASIMD},
+	{Prefix: "tbx", Features: features.ARM_ASIMD},
+	{Prefix: "rev", RequireReg: "v", Features: features.ARM_ASIMD},
+
+	// FP16 (Half-precision floating point) instructions
+	{Prefix: "fcvt", RequireReg: ".h", Features: features.ARM_FP16},
+	{Prefix: "fadd", RequireReg: ".h", Features: features.ARM_FP16},
+	{Prefix: "fsub", RequireReg: ".h", Features: features.ARM_FP16},
+	{Prefix: "fmul", RequireReg: ".h", Features: features.ARM_FP16},
+	{Prefix: "fdiv", RequireReg: ".h", Features: features.ARM_FP16},
+	{Prefix: "fmax", RequireReg: ".h", Features: features.ARM_FP16},
+	{Prefix: "fmin", RequireReg: ".h", Features: features.ARM_FP16},
+	{Prefix: "fmaxnm", RequireReg: ".h", Features: features.ARM_FP16},
+	{Prefix: "fminnm", RequireReg: ".h", Features: features.ARM_FP16},
+	{Prefix: "fabs", RequireReg: ".h", Features: features.ARM_FP16},
+	{Prefix: "fneg", RequireReg: ".h", Features: features.ARM_FP16},
+	{Prefix: "fsqrt", RequireReg: ".h", Features: features.ARM_FP16},
+
+	// FCMA (Complex number arithmetic)
+	{Prefix: "fcmla", Features: features.ARM_FCMA},
+	{Prefix: "fcadd", Features: features.ARM_FCMA},
+
+	// JSCVT (JavaScript conversion)
+	{Prefix: "fjcvtzs", Features: features.ARM_JSCVT},
+
+	// LRCPC (Load-acquire/store-release)
+	{Prefix: "ldapr", Features: features.ARM_LRCPC},
+	{Prefix: "ldaprb", Features: features.ARM_LRCPC},
+	{Prefix: "ldaprh", Features: features.ARM_LRCPC},
+
+	// FlagM (Flag manipulation)
+	{Prefix: "cfinv", Features: features.ARM_FLAGM},
+	{Prefix: "rmif", Features: features.ARM_FLAGM},
+	{Prefix: "setf8", Features: features.ARM_FLAGM},
+	{Prefix: "setf16", Features: features.ARM_FLAGM},
+
 	// SVE2 instructions
 	{Prefix: "sqrdmlah", Features: features.ARM_SVE2},
 	{Prefix: "sqrdmlsh", Features: features.ARM_SVE2},
