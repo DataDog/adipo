@@ -47,10 +47,8 @@ type AnalysisResult struct {
 
 // New creates a new analyzer with the given configuration
 func New(config Config) (*Analyzer, error) {
-	// Default max instructions if not specified
-	if config.MaxInstructions == 0 {
-		config.MaxInstructions = 100000 // Reasonable default to avoid analyzing huge binaries
-	}
+	// MaxInstructions = 0 means analyze all instructions (no limit)
+	// If you want to limit for performance, set it explicitly in the config
 
 	// Create disassembler
 	disassembler, err := NewDisassembler(config.ObjdumpPath)
