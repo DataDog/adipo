@@ -17,9 +17,10 @@ import (
 
 // TemplateEvaluator evaluates path templates at runtime
 type TemplateEvaluator struct {
-	arch    format.Architecture
-	version format.ArchVersion
-	caps    *cpu.Capabilities
+	arch     format.Architecture
+	version  format.ArchVersion
+	caps     *cpu.Capabilities
+	cpuAlias string // Detected CPU alias (e.g., "zen3", "apple-m1", empty if not detected)
 }
 
 // NewTemplateEvaluator creates evaluator for current CPU
@@ -29,17 +30,42 @@ func NewTemplateEvaluator(arch format.Architecture, version format.ArchVersion) 
 		return nil, err
 	}
 
+	// Detect CPU alias for template expansion (best effort, non-fatal)
+	cpuAlias := ""
+	if caps.CPUModel != nil {
+		cpuAlias = cpu.DetectCPUAlias(caps.CPUModel, arch)
+	}
+
 	return &TemplateEvaluator{
-		arch:    arch,
-		version: version,
-		caps:    caps,
+		arch:     arch,
+		version:  version,
+		caps:     caps,
+		cpuAlias: cpuAlias,
 	}, nil
 }
 
 // EvaluateTemplates expands templates and returns existing paths in priority order
-func (e *TemplateEvaluator) EvaluateTemplates(templates []string) []string {
+// If cpuHint matches the detected CPU alias, paths with {{.CPUAlias}} are prioritized
+func (e *TemplateEvaluator) EvaluateTemplates(templates []string, cpuHint string) []string {
 	var validPaths []string
 	seen := make(map[string]bool)
+
+	// Check if CPU hint matches detected CPU for priority boost
+	aliasMatch := cpuHint != "" && e.cpuAlias != "" && cpuHint == e.cpuAlias
+
+	// If alias matches, evaluate templates at current version first (priority boost for alias paths)
+	// This allows /opt/zen3/lib to be checked before /opt/x86-64-v3/lib
+	if aliasMatch {
+		for _, template := range templates {
+			path := e.expandTemplate(template, e.version)
+
+			// Only add if path exists and not already seen
+			if !seen[path] && e.pathExists(path) {
+				validPaths = append(validPaths, path)
+				seen[path] = true
+			}
+		}
+	}
 
 	// Get all compatible versions (includes fallback)
 	versions := e.getVersionFallbackChain()
@@ -104,10 +130,11 @@ func (e *TemplateEvaluator) getARMFallbackChain() []format.ArchVersion {
 // expandTemplate replaces variables with values
 func (e *TemplateEvaluator) expandTemplate(template string, version format.ArchVersion) string {
 	replacements := map[string]string{
-		"{{.Arch}}":        e.getArchName(),                  // "x86-64", "aarch64"
-		"{{.ArchTriple}}":  e.getArchTriple(),                // "x86_64", "aarch64"
-		"{{.Version}}":     e.getVersionStr(version),         // "v3", "v8.2"
+		"{{.Arch}}":        e.getArchName(),              // "x86-64", "aarch64"
+		"{{.ArchTriple}}":  e.getArchTriple(),            // "x86_64", "aarch64"
+		"{{.Version}}":     e.getVersionStr(version),     // "v3", "v8.2"
 		"{{.ArchVersion}}": e.getArchVersionStr(version), // "x86-64-v3", "aarch64-v8.2"
+		"{{.CPUAlias}}":    e.cpuAlias,                   // "zen3", "skylake", "apple-m1", "" if not detected
 	}
 
 	result := template

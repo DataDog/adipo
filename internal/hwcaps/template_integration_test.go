@@ -100,7 +100,7 @@ func TestTemplateEvaluationWithRealCPU(t *testing.T) {
 	}
 
 	// Evaluate templates
-	validPaths := evaluator.EvaluateTemplates(templates)
+	validPaths := evaluator.EvaluateTemplates(templates, "")
 
 	// Should find the directories we created
 	if len(validPaths) == 0 {
@@ -196,7 +196,7 @@ func TestDefaultTemplatesWithRealCPU(t *testing.T) {
 	}
 
 	// Evaluate default templates (will look for real system directories)
-	validPaths := evaluator.EvaluateTemplates(templates)
+	validPaths := evaluator.EvaluateTemplates(templates, "")
 
 	// On a real system with glibc-hwcaps support, we might find paths
 	// But this isn't guaranteed, so we just log what we find

@@ -51,7 +51,8 @@ func PrepareEnvironmentWithLibPath(metadata *format.BinaryMetadata, verbose bool
 	}
 
 	// Evaluate templates and get ranked paths
-	validPaths := evaluator.EvaluateTemplates(templates)
+	// TODO: Pass CPU hint from metadata in Phase 7
+	validPaths := evaluator.EvaluateTemplates(templates, "")
 	if len(validPaths) == 0 {
 		if verbose {
 			fmt.Fprintf(os.Stderr, "No valid library paths found\n")

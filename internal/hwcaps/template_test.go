@@ -222,7 +222,7 @@ func TestTemplateEvaluationWithDirectories(t *testing.T) {
 		version: format.X86_64_V3,
 	}
 
-	validPaths := evaluator.EvaluateTemplates(templates)
+	validPaths := evaluator.EvaluateTemplates(templates, "")
 
 	// Should find both v3 path (exact match) and v2 path (fallback)
 	if len(validPaths) != 2 {
@@ -266,7 +266,7 @@ func TestARMVersionFuzzyMatching(t *testing.T) {
 		version: format.ARM64_V9_4,
 	}
 
-	validPaths := evaluator.EvaluateTemplates(templates)
+	validPaths := evaluator.EvaluateTemplates(templates, "")
 
 	// Should find v9.0 path (via v9.0 fallback from v9.4) and v8.2 path
 	if len(validPaths) == 0 {
@@ -298,7 +298,7 @@ func TestEmptyTemplates(t *testing.T) {
 		version: format.X86_64_V3,
 	}
 
-	validPaths := evaluator.EvaluateTemplates([]string{})
+	validPaths := evaluator.EvaluateTemplates([]string{}, "")
 
 	if len(validPaths) != 0 {
 		t.Errorf("expected 0 paths with empty templates, got %d", len(validPaths))
@@ -317,7 +317,7 @@ func TestNonExistentPaths(t *testing.T) {
 		version: format.X86_64_V3,
 	}
 
-	validPaths := evaluator.EvaluateTemplates(templates)
+	validPaths := evaluator.EvaluateTemplates(templates, "")
 
 	if len(validPaths) != 0 {
 		t.Errorf("expected 0 paths for non-existent directories, got %d: %v", len(validPaths), validPaths)
@@ -325,6 +325,83 @@ func TestNonExistentPaths(t *testing.T) {
 }
 
 // TestPathOrdering tests that paths are returned in correct priority order
+// TestCPUAliasPriority tests that paths with {{.CPUAlias}} are prioritized when hint matches
+func TestCPUAliasPriority(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create directory structure:
+	// /opt/zen3/lib (CPU alias path)
+	// /opt/x86-64-v3/lib (version path)
+	// /opt/x86-64-v2/lib (fallback version path)
+	zen3Path := filepath.Join(tmpDir, "opt/zen3/lib")
+	v3Path := filepath.Join(tmpDir, "opt/x86-64-v3/lib")
+	v2Path := filepath.Join(tmpDir, "opt/x86-64-v2/lib")
+
+	if err := os.MkdirAll(zen3Path, 0755); err != nil {
+		t.Fatalf("failed to create zen3 directory: %v", err)
+	}
+	if err := os.MkdirAll(v3Path, 0755); err != nil {
+		t.Fatalf("failed to create v3 directory: %v", err)
+	}
+	if err := os.MkdirAll(v2Path, 0755); err != nil {
+		t.Fatalf("failed to create v2 directory: %v", err)
+	}
+
+	templates := []string{
+		tmpDir + "/opt/{{.CPUAlias}}/lib",
+		tmpDir + "/opt/{{.ArchVersion}}/lib",
+	}
+
+	evaluator := &TemplateEvaluator{
+		arch:     format.ArchX86_64,
+		version:  format.X86_64_V3,
+		cpuAlias: "zen3", // Detected CPU alias
+	}
+
+	// Test 1: With matching hint, CPU alias path should be first
+	validPaths := evaluator.EvaluateTemplates(templates, "zen3")
+
+	if len(validPaths) != 3 {
+		t.Errorf("expected 3 valid paths, got %d: %v", len(validPaths), validPaths)
+	}
+
+	// First path should be zen3 (CPU alias match with priority boost)
+	if len(validPaths) > 0 && validPaths[0] != zen3Path {
+		t.Errorf("first path = %s, want %s (CPU alias should be prioritized)", validPaths[0], zen3Path)
+	}
+
+	// Second path should be v3 (version)
+	if len(validPaths) > 1 && validPaths[1] != v3Path {
+		t.Errorf("second path = %s, want %s", validPaths[1], v3Path)
+	}
+
+	// Test 2: Without matching hint, no priority boost
+	// Template order still matters within each version level
+	validPaths2 := evaluator.EvaluateTemplates(templates, "")
+
+	if len(validPaths2) != 3 {
+		t.Errorf("expected 3 valid paths, got %d: %v", len(validPaths2), validPaths2)
+	}
+
+	// Without priority boost, all 3 paths are still found
+	// The key difference is that matching hint evaluates templates BEFORE version fallback
+	// Here we verify the paths are all present (order may vary by template order)
+	pathSet := make(map[string]bool)
+	for _, p := range validPaths2 {
+		pathSet[p] = true
+	}
+	if !pathSet[zen3Path] || !pathSet[v3Path] || !pathSet[v2Path] {
+		t.Errorf("missing expected paths. Got: %v", validPaths2)
+	}
+
+	// Test 3: Wrong hint, same as no hint (no priority boost)
+	validPaths3 := evaluator.EvaluateTemplates(templates, "skylake")
+
+	if len(validPaths3) != 3 {
+		t.Errorf("expected 3 valid paths with wrong hint, got %d: %v", len(validPaths3), validPaths3)
+	}
+}
+
 func TestPathOrdering(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -352,7 +429,7 @@ func TestPathOrdering(t *testing.T) {
 		version: format.X86_64_V3,
 	}
 
-	validPaths := evaluator.EvaluateTemplates(templates)
+	validPaths := evaluator.EvaluateTemplates(templates, "")
 
 	if len(validPaths) != 4 {
 		t.Fatalf("expected 4 paths, got %d", len(validPaths))
