@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/DataDog/adipo/internal/compression"
+	"github.com/DataDog/adipo/internal/cpu"
 	"github.com/DataDog/adipo/internal/elf"
 	"github.com/DataDog/adipo/internal/format"
 	"github.com/DataDog/adipo/internal/hwcaps"
@@ -51,31 +52,60 @@ Input binaries can be specified in two ways:
 2. Positional arguments only (auto-detection from ELF headers)
 
 Architecture specification format:
-  ARCH-VERSION[,FEATURE1,FEATURE2,...]
+  --binary FILE:ARCH-VERSION[:CPU-HINT][,FEATURE1,FEATURE2,...]
 
-Examples:
+Where:
+  FILE         - Path to input binary
+  ARCH-VERSION - Architecture and version (e.g., x86-64-v3, aarch64-v8.2)
+  CPU-HINT     - Optional GCC-style CPU name for optimized binary selection
+                 Examples: zen3, zen4, skylake, icelake, neoverse-v2, apple-m3
+                 Use 'adipo detect-cpu' to see valid aliases for your architecture
+
+Architecture versions:
   x86-64-v1, x86-64-v2, x86-64-v3, x86-64-v4
   amd64-v2      (amd64 is an alias for x86-64)
   aarch64-v8.0, aarch64-v8.1, aarch64-v9.0
   arm64-v9.0    (arm64 is an alias for aarch64)
-  x86-64-v3,avx2,bmi2
-  aarch64-v9.0,sve2
 
 Usage:
-  # With explicit specifications
-  adipo create -o app.fat --binary app-v1:x86-64-v1 --binary app-v2:x86-64-v2
+  # Basic usage without CPU hints
+  adipo create -o app.fat \
+    --binary app-v1:x86-64-v1 \
+    --binary app-v2:x86-64-v2 \
+    --binary app-v3:x86-64-v3
 
-  # With auto-detection (uses baseline versions)
+  # With CPU hints for optimized binary selection
+  adipo create -o app.fat \
+    --binary app-baseline:x86-64-v2 \
+    --binary app-zen:x86-64-v3:zen3 \
+    --binary app-intel:x86-64-v3:skylake \
+    --binary app-zen4:x86-64-v4:zen4
+
+  # ARM64 with CPU hints
+  adipo create -o app.fat \
+    --binary app-arm:aarch64-v8.0 \
+    --binary app-neoverse:aarch64-v8.2:neoverse-v2 \
+    --binary app-graviton:aarch64-v8.4:graviton3
+
+  # macOS Apple Silicon
+  adipo create -o app.fat \
+    --binary app-m1:aarch64-v8.0:apple-m1 \
+    --binary app-m3:aarch64-v8.0:apple-m3
+
+  # With auto-detection (uses baseline versions, no hints)
   adipo create -o app.fat app-v1 app-v2 app-v3
 
-  # Mixed mode
-  adipo create -o app.fat app-baseline --binary app-optimized:x86-64-v3,avx2`,
+  # Mixed: some with hints, some without
+  adipo create -o app.fat \
+    app-baseline \
+    --binary app-zen:x86-64-v3:zen3 \
+    --binary app-optimized:x86-64-v3,avx2,bmi2`,
 	RunE: runCreate,
 }
 
 func init() {
 	createCmd.Flags().StringVarP(&createFlags.output, "output", "o", "", "Output fat binary path (required)")
-	createCmd.Flags().StringArrayVar(&createFlags.binaries, "binary", []string{}, "Input binary with specification (FILE:SPEC)")
+	createCmd.Flags().StringArrayVar(&createFlags.binaries, "binary", []string{}, "Input binary with specification (FILE:ARCH-VERSION[:CPU-HINT])")
 	createCmd.Flags().StringVar(&createFlags.compress, "compress", "zstd", "Compression algorithm (zstd, lz4, gzip, none)")
 	createCmd.Flags().IntVar(&createFlags.level, "level", 3, "Compression level")
 	createCmd.Flags().BoolVar(&createFlags.verify, "verify", true, "Verify binary format (ELF/Mach-O) and executability")
@@ -250,8 +280,9 @@ func runCreate(cmd *cobra.Command, args []string) error {
 
 // InputBinary represents an input binary with optional specification
 type InputBinary struct {
-	Path string
-	Spec *format.ArchSpec
+	Path    string
+	Spec    *format.ArchSpec
+	CPUHint string // Optional CPU hint (e.g., "zen3", "skylake", "neoverse-v2")
 }
 
 // collectInputBinaries collects and parses input binaries from args and flags
@@ -260,13 +291,19 @@ func collectInputBinaries(args []string) ([]*InputBinary, error) {
 
 	// Process --binary flags first
 	for _, binSpec := range createFlags.binaries {
-		parts := strings.SplitN(binSpec, ":", 2)
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid --binary format (expected FILE:SPEC): %s", binSpec)
+		parts := strings.SplitN(binSpec, ":", 3)
+		if len(parts) < 2 {
+			return nil, fmt.Errorf("invalid --binary format (expected FILE:SPEC[:CPU-HINT]): %s", binSpec)
 		}
 
 		path := strings.TrimSpace(parts[0])
 		specStr := strings.TrimSpace(parts[1])
+
+		// Extract optional CPU hint (third field)
+		var cpuHint string
+		if len(parts) == 3 {
+			cpuHint = strings.TrimSpace(parts[2])
+		}
 
 		spec, err := format.ParseArchSpec(specStr)
 		if err != nil {
@@ -274,16 +311,18 @@ func collectInputBinaries(args []string) ([]*InputBinary, error) {
 		}
 
 		inputs = append(inputs, &InputBinary{
-			Path: path,
-			Spec: spec,
+			Path:    path,
+			Spec:    spec,
+			CPUHint: cpuHint,
 		})
 	}
 
 	// Process positional arguments (auto-detection)
 	for _, path := range args {
 		inputs = append(inputs, &InputBinary{
-			Path: path,
-			Spec: nil, // Will be auto-detected
+			Path:    path,
+			Spec:    nil, // Will be auto-detected
+			CPUHint: "",  // No hint for auto-detected binaries
 		})
 	}
 
@@ -473,6 +512,21 @@ func processBinary(input *InputBinary, compAlgo format.CompressionAlgo, level in
 		Checksum:         checksum,
 		Priority:         uint32(archVersion), // Higher version = higher priority
 		Format:           binaryFormat,
+	}
+
+	// Store CPU hint if provided
+	if input.CPUHint != "" {
+		// Validate hint against detected architecture
+		if _, err := cpu.ValidateCPUHint(input.CPUHint, arch); err != nil {
+			return nil, fmt.Errorf("invalid CPU hint %q for architecture %s: %w",
+				input.CPUHint, arch.String(), err)
+		}
+
+		if err := metadata.SetCPUHint(input.CPUHint); err != nil {
+			return nil, fmt.Errorf("failed to store CPU hint: %w", err)
+		}
+
+		fmt.Printf("  CPU hint: %s\n", input.CPUHint)
 	}
 
 	// Store library path templates in metadata if enabled
