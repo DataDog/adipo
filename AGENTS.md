@@ -77,6 +77,36 @@ Test on both platforms when possible, or clearly document platform-specific code
 - Include examples in documentation for complex features
 - Update relevant markdown documentation files
 
+### Maintaining CPU Alias Tables
+
+When adding support for new CPUs, update the alias mapping tables in `internal/cpu/aliases.go`:
+
+**For x86-64 CPUs:**
+- Add entries to `X86CPUAliases` with Family:Model mappings
+- Find CPU family/model with: `lscpu | grep -E 'Model|Family'` on Linux
+- Common patterns:
+  - Intel: Family 6, different models for each generation
+  - AMD: Family 23 (Zen/Zen+/Zen2), Family 25 (Zen3/Zen4)
+- Use `NamePattern` for CPUs with multiple SKUs (e.g., "Platinum", "Gold" for Skylake-AVX512)
+
+**For ARM64 Linux CPUs:**
+- Add entries to `ARMCPUAliases` with Implementer:PartNum mappings
+- Find values with: `grep -E 'CPU implementer|CPU part' /proc/cpuinfo`
+- Format: Implementer 0x41 = ARM Ltd, PartNum identifies specific CPU
+- Examples: Neoverse N1 = 0x41:0xd0c, Neoverse V2 = 0x41:0xd4f
+
+**For Apple Silicon CPUs:**
+- Add entries to `AppleSiliconAliases` with regex patterns
+- Match brand string from: `sysctl -n machdep.cpu.brand_string`
+- Pattern matches any variant (base/Pro/Max/Ultra) to same alias
+- Example: `Apple M3.*` → "apple-m3"
+
+**Testing:**
+1. Test detection: `adipo detect-cpu` on the target CPU
+2. Test binary selection with hints in selector tests
+3. Test library path priority with hints in hwcaps tests
+4. Document new aliases in README.md and LIBRARY_PATHS.md
+
 ## Commit Guidelines
 
 **Do NOT mention AI assistants in commit messages.** Write commit messages as if you wrote the code yourself:
