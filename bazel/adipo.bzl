@@ -60,7 +60,7 @@ adipo_fat_binary = rule(
         "binaries": attr.label_keyed_string_dict(
             mandatory = True,
             allow_files = True,
-            doc = "Dictionary mapping binary targets to their architecture specifications (e.g., 'x86-64-v1', 'x86-64-v2')",
+            doc = "Dictionary mapping binary targets to their architecture specifications (e.g., 'x86-64-v1', 'x86-64-v2', 'x86-64-v3:zen3'). Optionally include CPU hint after architecture spec: 'ARCH-VERSION:CPU-HINT'",
         ),
         "compression": attr.string(
             default = "zstd",
@@ -68,7 +68,7 @@ adipo_fat_binary = rule(
             values = ["zstd", "lz4", "gzip", "none"],
         ),
         "lib_path_template": attr.string(
-            doc = "Library path template (e.g., '/opt/libs/{{.ArchVersion}}'). Template variables: {{.Arch}}, {{.ArchTriple}}, {{.Version}}, {{.ArchVersion}}",
+            doc = "Library path template (e.g., '/opt/libs/{{.ArchVersion}}'). Template variables: {{.Arch}}, {{.ArchTriple}}, {{.Version}}, {{.ArchVersion}}, {{.CPUAlias}}",
         ),
         "enable_lib_path": attr.bool(
             default = False,
@@ -113,6 +113,20 @@ Example:
             ":myapp_v2": "x86-64-v2",
         },
         no_stub = True,
+    )
+
+    # With CPU-specific optimization hints:
+    adipo_fat_binary(
+        name = "myapp_fat_cpuhints",
+        binaries = {
+            ":myapp_zen": "x86-64-v3:zen3",
+            ":myapp_intel": "x86-64-v3:skylake",
+            ":myapp_baseline": "x86-64-v1",
+        },
+        enable_lib_path = True,
+        lib_path_template = "/opt/{{.CPUAlias}}/lib",
+        # Runtime selects best binary based on detected CPU
+        # Library paths prioritize CPU-specific directories when hint matches
     )
 
     # With automatic library path templates (default templates):

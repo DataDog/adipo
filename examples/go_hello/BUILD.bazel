@@ -80,3 +80,18 @@ adipo_fat_binary(
     compression = "zstd",
     stub = "//cmd/adipo-stub",
 )
+
+# Example with CPU-specific optimization hints
+# Runtime selects best binary based on detected CPU model
+adipo_fat_binary(
+    name = "hello_fat_cpuhints",
+    binaries = {
+        ":hello_v1": "x86-64-v1",
+        ":hello_v2": "x86-64-v2:haswell",
+        ":hello_v3": "x86-64-v3:zen3",
+    },
+    compression = "zstd",
+    enable_lib_path = True,
+    lib_path_template = "/opt/{{.CPUAlias}}/lib",
+    stub = "//cmd/adipo-stub",
+)
