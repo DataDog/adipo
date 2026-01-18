@@ -63,6 +63,7 @@ func runDetectCPU(cmd *cobra.Command, args []string) error {
 type CPUInfo struct {
 	Architecture string            `json:"architecture"`
 	Version      string            `json:"version"`
+	CPUAlias     string            `json:"cpu_alias,omitempty"`
 	CPUModel     *CPUModelInfo     `json:"cpu_model,omitempty"`
 	Features     []string          `json:"features"`
 }
@@ -88,6 +89,14 @@ func outputDetectCPUJSON(caps *cpu.Capabilities) error {
 		Architecture: caps.Architecture,
 		Version:      caps.VersionStr,
 		Features:     caps.FeatureList(),
+	}
+
+	// Detect CPU alias
+	if caps.CPUModel != nil {
+		alias := cpu.DetectCPUAlias(caps.CPUModel, caps.ArchType)
+		if alias != "" {
+			info.CPUAlias = alias
+		}
 	}
 
 	// Add CPU model information if available
@@ -118,6 +127,12 @@ func outputDetectCPUHuman(caps *cpu.Capabilities) error {
 	// Display CPU model information if available
 	if caps.CPUModel != nil {
 		fmt.Printf("CPU Model: %s\n", caps.CPUModel.String())
+
+		// Detect and display CPU alias
+		alias := cpu.DetectCPUAlias(caps.CPUModel, caps.ArchType)
+		if alias != "" {
+			fmt.Printf("CPU Alias: %s\n", alias)
+		}
 
 		// Show detailed fields based on architecture
 		switch runtime.GOARCH {
