@@ -15,9 +15,9 @@ internal/stub/stub.bin
 internal/stub/stub_generated.go
 adipo-stub*
 
-# Built binaries
-adipo
-hwcaps-exec
+# Built binaries (only in root, not source directories)
+/adipo
+/hwcaps-exec
 test/bin/
 
 # Test binary, built with `go test -c`
