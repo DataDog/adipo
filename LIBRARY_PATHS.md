@@ -53,6 +53,39 @@ Templates support these variables:
 | `{{.ArchTriple}}` | `x86_64` | `aarch64` | Debian multiarch triple |
 | `{{.Version}}` | `v3` | `v9.4` | Version string |
 | `{{.ArchVersion}}` | `x86-64-v3` | `aarch64-v9.4` | Full arch-version |
+| `{{.CPUAlias}}` | `zen3` | `apple-m3` | CPU-specific hint (see below) |
+
+**CPU Alias (`{{.CPUAlias}}`):**
+
+The `{{.CPUAlias}}` variable expands to the detected CPU microarchitecture name (e.g., `zen3`, `skylake`, `apple-m3`). Use it to ship CPU-optimized libraries alongside version-based paths.
+
+- **Requires**: Binary built with `--binary FILE:ARCH:CPU-HINT`
+- **Runtime**: Detected CPU alias must match the build-time hint
+- **Priority**: When hint matches, alias paths are checked BEFORE version paths
+- **Empty**: If no hint or no match, expands to empty string (path filtered out)
+
+Example:
+```bash
+# Build with CPU hints
+adipo create -o app.fat \
+  --enable-lib-path \
+  --lib-path-template "/opt/{{.CPUAlias}}/lib" \
+  --lib-path-template "/opt/{{.ArchVersion}}/lib" \
+  --binary app-zen:x86-64-v3:zen3 \
+  --binary app-intel:x86-64-v3:skylake
+
+# Runtime on Zen 3 CPU:
+# 1. /opt/zen3/lib           (alias match - priority boost)
+# 2. /opt/x86-64-v3/lib      (version)
+# 3. /opt/x86-64-v2/lib      (fallback)
+
+# Runtime on Skylake CPU:
+# 1. /opt/skylake/lib        (alias match - priority boost)
+# 2. /opt/x86-64-v3/lib      (version)
+# 3. /opt/x86-64-v2/lib      (fallback)
+```
+
+Use `adipo detect-cpu` to see your CPU alias and valid aliases for your architecture.
 
 ### Custom Templates
 

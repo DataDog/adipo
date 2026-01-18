@@ -246,6 +246,58 @@ adipo create -o app.fat \
   --binary app-v3:x86-64-v3
 ```
 
+### CPU-Specific Optimization
+
+Optimize binary selection and library paths for specific CPU microarchitectures using CPU hints. This allows you to ship binaries tuned for different CPUs (e.g., AMD Zen 3 vs Intel Skylake) even at the same feature level.
+
+**Detect your CPU:**
+```bash
+# See what CPU alias your system has
+adipo detect-cpu
+
+# Example output on AMD Zen 3:
+# Architecture: x86-64
+# Version: v3
+# CPU Model: AMD Ryzen 9 7950X
+# CPU Alias: zen4
+```
+
+**Build with CPU hints:**
+```bash
+# Create fat binary with CPU-optimized variants
+adipo create -o app.fat \
+  --binary app-baseline:x86-64-v2 \
+  --binary app-zen:x86-64-v3:zen3 \
+  --binary app-intel:x86-64-v3:skylake \
+  --binary app-zen4:x86-64-v4:zen4
+
+# With library paths using {{.CPUAlias}} template
+adipo create -o app.fat \
+  --enable-lib-path \
+  --lib-path-template "/opt/{{.CPUAlias}}/lib" \
+  --lib-path-template "/opt/{{.ArchVersion}}/lib" \
+  --binary app-zen:x86-64-v3:zen3 \
+  --binary app-intel:x86-64-v3:skylake
+```
+
+**How it works:**
+1. **Build time**: Specify CPU hints with `--binary FILE:ARCH:CPU-HINT`
+2. **Runtime**: adipo detects the current CPU and matches against hints
+3. **Selection**: When hint matches detected CPU, that binary is preferred
+4. **Library paths**: Paths with `{{.CPUAlias}}` are prioritized when hint matches
+
+**Example on Zen 3 CPU:**
+- Runtime detects: CPU alias = "zen3"
+- Binary selection: `app-zen` binary selected (hint="zen3" matches)
+- Library paths: `/opt/zen3/lib` checked before `/opt/x86-64-v3/lib`
+
+**Supported CPU aliases:**
+- **x86-64**: haswell, broadwell, skylake, skylake-avx512, icelake, zen, zen2, zen3, zen4
+- **ARM64 Linux**: neoverse-n1, neoverse-n2, neoverse-v1, neoverse-v2, graviton2, graviton3, cortex-a76
+- **ARM64 macOS**: apple-m1, apple-m2, apple-m3, apple-m4
+
+Use `adipo detect-cpu` to find valid aliases for your architecture.
+
 ### Hardware Capabilities Execution
 
 Execute programs with automatic library path selection based on CPU capabilities using `hwcaps-exec`. This is useful for platforms without native glibc hwcaps support or for custom library layouts.
