@@ -20,11 +20,20 @@ type BinaryScore struct {
 }
 
 // Scorer calculates scores for binaries
-type Scorer struct{}
+type Scorer struct {
+	detectedCPUAlias string // Detected CPU alias (e.g., "zen3", "apple-m1")
+}
 
 // NewScorer creates a new scorer
 func NewScorer() *Scorer {
 	return &Scorer{}
+}
+
+// NewScorerWithCPUAlias creates a scorer with CPU alias for matching
+func NewScorerWithCPUAlias(cpuAlias string) *Scorer {
+	return &Scorer{
+		detectedCPUAlias: cpuAlias,
+	}
 }
 
 // Score calculates a score for a binary
@@ -34,6 +43,11 @@ func (s *Scorer) Score(binary *format.BinaryMetadata) int {
 
 	// Base score from priority field (highest weight)
 	score += int(binary.Priority) * 1000
+
+	// CPU alias match bonus (high priority boost for matching CPU hints)
+	// This allows preferring binaries tuned for specific CPUs even at same version level
+	// Example: prefer zen3-tuned binary over skylake-tuned when running on Zen 3
+	score += s.cpuAliasScore(binary) * 500
 
 	// Score from version level (higher version = better)
 	score += s.versionScore(binary) * 100
@@ -46,6 +60,27 @@ func (s *Scorer) Score(binary *format.BinaryMetadata) int {
 	score -= int(binary.CompressedSize / (1024 * 1024))
 
 	return score
+}
+
+// cpuAliasScore returns 1 if CPU alias matches, 0 otherwise
+func (s *Scorer) cpuAliasScore(binary *format.BinaryMetadata) int {
+	// No bonus if we don't have a detected CPU alias
+	if s.detectedCPUAlias == "" {
+		return 0
+	}
+
+	// Check if binary has a CPU hint
+	binaryHint := binary.GetCPUHint()
+	if binaryHint == "" {
+		return 0 // Binary has no hint, no bonus
+	}
+
+	// Bonus if hints match exactly
+	if binaryHint == s.detectedCPUAlias {
+		return 1 // Will be multiplied by 500 in Score()
+	}
+
+	return 0
 }
 
 // versionScore returns a score based on the architecture version

@@ -787,6 +787,114 @@ func (m *BinaryMetadata) SetLibraryPathTemplates(templates []string) error {
 	return nil
 }
 
+// GetCPUHint retrieves the optional CPU hint from metadata
+// Returns empty string if not set
+// CPU hint is stored after library path templates in Reserved space
+func (m *BinaryMetadata) GetCPUHint() string {
+	const maxHintLen = 64
+
+	// First, find the end of templates
+	templateCount := binary.LittleEndian.Uint16(m.Reserved[0:2])
+	if templateCount > 10 { // Sanity check
+		return ""
+	}
+
+	offset := 2 // Start after count
+
+	// Skip past all templates to find where CPU hint would be
+	for i := 0; i < int(templateCount); i++ {
+		if offset+2 > len(m.Reserved) {
+			return ""
+		}
+
+		templateLen := binary.LittleEndian.Uint16(m.Reserved[offset : offset+2])
+		offset += 2
+
+		if templateLen > 512 || offset+int(templateLen) > len(m.Reserved) {
+			return ""
+		}
+
+		offset += int(templateLen)
+	}
+
+	// Now at the position where CPU hint should be
+	// Check if we have room for hint length field
+	if offset+2 > len(m.Reserved) {
+		return ""
+	}
+
+	// Read hint length
+	hintLen := binary.LittleEndian.Uint16(m.Reserved[offset : offset+2])
+	if hintLen == 0 {
+		return "" // No hint set
+	}
+
+	// Validate hint length
+	if hintLen > maxHintLen || offset+2+int(hintLen) > len(m.Reserved) {
+		return ""
+	}
+
+	// Read hint string
+	hintBytes := m.Reserved[offset+2 : offset+2+int(hintLen)]
+	return string(hintBytes)
+}
+
+// SetCPUHint stores an optional CPU hint in metadata
+// Hint must be <= 64 bytes
+// CPU hint is stored after library path templates in Reserved space
+func (m *BinaryMetadata) SetCPUHint(hint string) error {
+	const maxHintLen = 64
+
+	if len(hint) > maxHintLen {
+		return fmt.Errorf("CPU hint too long (max %d bytes, got %d)", maxHintLen, len(hint))
+	}
+
+	// First, get existing templates to preserve them
+	templates := m.GetLibraryPathTemplates()
+
+	// Calculate space needed for templates
+	templateSpace := 2 // Count
+	for _, template := range templates {
+		templateSpace += 2 + len(template) // Length + string
+	}
+
+	// Calculate space needed for hint
+	hintSpace := 2 + len(hint) // Length + string
+
+	// Check total space
+	if templateSpace+hintSpace > len(m.Reserved) {
+		return errors.New("not enough space in Reserved for templates and CPU hint")
+	}
+
+	// Write templates (this clears Reserved first)
+	if len(templates) > 0 {
+		if err := m.SetLibraryPathTemplates(templates); err != nil {
+			return fmt.Errorf("failed to preserve templates: %w", err)
+		}
+	} else {
+		// No templates, just clear Reserved and set count to 0
+		for i := range m.Reserved {
+			m.Reserved[i] = 0
+		}
+		binary.LittleEndian.PutUint16(m.Reserved[0:2], 0)
+		templateSpace = 2
+	}
+
+	// Write CPU hint after templates
+	offset := templateSpace
+
+	// Write hint length
+	binary.LittleEndian.PutUint16(m.Reserved[offset:offset+2], uint16(len(hint)))
+	offset += 2
+
+	// Write hint string
+	if len(hint) > 0 {
+		copy(m.Reserved[offset:], []byte(hint))
+	}
+
+	return nil
+}
+
 // Errors
 var (
 	ErrInvalidMagic       = errors.New("invalid magic marker")

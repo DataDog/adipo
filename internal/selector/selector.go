@@ -23,11 +23,17 @@ type Selector struct {
 
 // NewSelector creates a new binary selector
 func NewSelector(caps *cpu.Capabilities, binaries []*format.BinaryMetadata) *Selector {
+	// Detect CPU alias for scoring (if available)
+	cpuAlias := ""
+	if caps.CPUModel != nil {
+		cpuAlias = cpu.DetectCPUAlias(caps.CPUModel, caps.ArchType)
+	}
+
 	return &Selector{
 		caps:     caps,
 		binaries: binaries,
 		matcher:  NewMatcher(caps),
-		scorer:   NewScorer(),
+		scorer:   NewScorerWithCPUAlias(cpuAlias),
 	}
 }
 

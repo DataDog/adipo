@@ -163,3 +163,131 @@ func TestSelectBinaryVerbose_NoCompatible(t *testing.T) {
 		t.Error("SelectBinaryVerbose() expected error for no compatible binaries")
 	}
 }
+
+func TestSelectBinaryWithCPUAlias(t *testing.T) {
+	tests := []struct {
+		name      string
+		caps      *cpu.Capabilities
+		metadata  []*format.BinaryMetadata
+		wantIndex int
+		wantError bool
+	}{
+		{
+			name: "prefer binary with matching CPU hint over same version without hint",
+			caps: &cpu.Capabilities{
+				ArchType: format.ArchX86_64,
+				Version:  format.X86_64_V3,
+				CPUModel: &cpu.CPUModel{
+					Vendor: "AuthenticAMD",
+					Family: 25, // Zen 3
+					Model:  33,
+				},
+			},
+			metadata: func() []*format.BinaryMetadata {
+				// Create three v3 binaries with different CPU hints
+				binNoHint := &format.BinaryMetadata{
+					Architecture: format.ArchX86_64,
+					ArchVersion:  format.X86_64_V3,
+				}
+				binZen3 := &format.BinaryMetadata{
+					Architecture: format.ArchX86_64,
+					ArchVersion:  format.X86_64_V3,
+				}
+				binSkyLake := &format.BinaryMetadata{
+					Architecture: format.ArchX86_64,
+					ArchVersion:  format.X86_64_V3,
+				}
+
+				// Set CPU hints
+				_ = binZen3.SetCPUHint("zen3")
+				_ = binSkyLake.SetCPUHint("skylake")
+
+				return []*format.BinaryMetadata{binNoHint, binZen3, binSkyLake}
+			}(),
+			wantIndex: 1, // zen3 binary should be preferred
+			wantError: false,
+		},
+		{
+			name: "prefer binary with matching CPU hint over wrong hint",
+			caps: &cpu.Capabilities{
+				ArchType: format.ArchX86_64,
+				Version:  format.X86_64_V3,
+				CPUModel: &cpu.CPUModel{
+					Vendor: "GenuineIntel",
+					Family: 6,  // Skylake
+					Model:  94,
+				},
+			},
+			metadata: func() []*format.BinaryMetadata {
+				binZen3 := &format.BinaryMetadata{
+					Architecture: format.ArchX86_64,
+					ArchVersion:  format.X86_64_V3,
+				}
+				binSkyLake := &format.BinaryMetadata{
+					Architecture: format.ArchX86_64,
+					ArchVersion:  format.X86_64_V3,
+				}
+
+				_ = binZen3.SetCPUHint("zen3")
+				_ = binSkyLake.SetCPUHint("skylake")
+
+				return []*format.BinaryMetadata{binZen3, binSkyLake}
+			}(),
+			wantIndex: 1, // skylake binary should be preferred
+			wantError: false,
+		},
+		{
+			name: "no CPU model detected - fallback to version selection",
+			caps: &cpu.Capabilities{
+				ArchType: format.ArchX86_64,
+				Version:  format.X86_64_V3,
+				CPUModel: nil, // No CPU model detected
+			},
+			metadata: func() []*format.BinaryMetadata {
+				binV2 := &format.BinaryMetadata{
+					Architecture: format.ArchX86_64,
+					ArchVersion:  format.X86_64_V2,
+				}
+				binV3WithHint := &format.BinaryMetadata{
+					Architecture: format.ArchX86_64,
+					ArchVersion:  format.X86_64_V3,
+				}
+
+				_ = binV3WithHint.SetCPUHint("zen3")
+
+				return []*format.BinaryMetadata{binV2, binV3WithHint}
+			}(),
+			wantIndex: 1, // v3 still selected (no CPU alias bonus, but higher version)
+			wantError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sel := NewSelector(tt.caps, tt.metadata)
+			index, binary, err := sel.SelectBinary()
+
+			if tt.wantError {
+				if err == nil {
+					t.Error("SelectBinary() expected error, got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("SelectBinary() unexpected error: %v", err)
+				return
+			}
+
+			if index != tt.wantIndex {
+				t.Errorf("SelectBinary() index = %d, want %d", index, tt.wantIndex)
+
+				// Show what was actually selected for debugging
+				if binary != nil {
+					hint := binary.GetCPUHint()
+					t.Logf("Selected binary with hint: %q", hint)
+				}
+			}
+		})
+	}
+}
