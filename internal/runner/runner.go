@@ -38,6 +38,12 @@ func PrepareEnvironmentWithLibPath(metadata *format.BinaryMetadata, verbose bool
 		fmt.Fprintf(os.Stderr, "Evaluating %d library path templates...\n", len(templates))
 	}
 
+	// Get CPU hint from metadata for library path prioritization
+	cpuHint := metadata.GetCPUHint()
+	if verbose && cpuHint != "" {
+		fmt.Fprintf(os.Stderr, "CPU hint: %s\n", cpuHint)
+	}
+
 	// Create evaluator for current CPU
 	evaluator, err := hwcaps.NewTemplateEvaluator(
 		metadata.Architecture,
@@ -51,8 +57,8 @@ func PrepareEnvironmentWithLibPath(metadata *format.BinaryMetadata, verbose bool
 	}
 
 	// Evaluate templates and get ranked paths
-	// TODO: Pass CPU hint from metadata in Phase 7
-	validPaths := evaluator.EvaluateTemplates(templates, "")
+	// If CPU hint matches detected CPU, alias paths are prioritized
+	validPaths := evaluator.EvaluateTemplates(templates, cpuHint)
 	if len(validPaths) == 0 {
 		if verbose {
 			fmt.Fprintf(os.Stderr, "No valid library paths found\n")
