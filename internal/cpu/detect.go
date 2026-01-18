@@ -13,12 +13,25 @@ import (
 
 // Detect detects the current CPU capabilities
 func Detect() (*Capabilities, error) {
+	var caps *Capabilities
+	var err error
+
 	switch runtime.GOARCH {
 	case "amd64":
-		return DetectX86_64()
+		caps, err = DetectX86_64()
 	case "arm64":
-		return DetectARM64()
+		caps, err = DetectARM64()
 	default:
 		return nil, fmt.Errorf("unsupported architecture: %s", runtime.GOARCH)
 	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Detect CPU model (best effort, non-fatal)
+	model, _ := DetectCPUModel()
+	caps.CPUModel = model
+
+	return caps, nil
 }

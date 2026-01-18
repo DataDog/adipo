@@ -19,6 +19,7 @@ type Capabilities struct {
 	Features     map[string]struct{} // Feature name -> present (set)
 	FeatureMask  uint64              // Primary 64-bit feature mask
 	ExtMasks     [4]uint64           // Extended feature masks (for future use)
+	CPUModel     *CPUModel           // Detected CPU model (may be nil)
 }
 
 // NewCapabilities creates a new Capabilities struct

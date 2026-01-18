@@ -53,4 +53,5 @@ func init() {
 	rootCmd.AddCommand(inspectCmd)
 	rootCmd.AddCommand(extractCmd)
 	rootCmd.AddCommand(runCmd)
+	rootCmd.AddCommand(detectCPUCmd)
 }
