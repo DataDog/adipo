@@ -6,6 +6,7 @@ go_library(
         "analyze.go",
         "cpu.go",
         "create.go",
+        "detect-cpu.go",
         "extract.go",
         "inspect.go",
         "main.go",

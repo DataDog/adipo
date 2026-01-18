@@ -3,9 +3,11 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "cpu",
     srcs = [
+        "aliases.go",
         "arm64.go",
         "arm64_stub.go",
         "capabilities.go",
+        "cpumodel.go",
         "detect.go",
         "features.go",
         "x86_64.go",
