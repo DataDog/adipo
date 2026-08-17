@@ -255,9 +255,9 @@ Optimize binary selection and library paths for specific CPU microarchitectures 
 # See what CPU alias your system has
 adipo detect-cpu
 
-# Example output on AMD Zen 3:
+# Example output on AMD Zen 4:
 # Architecture: x86-64
-# Version: v3
+# Version: v4
 # CPU Model: AMD Ryzen 9 7950X
 # CPU Alias: zen4
 ```
@@ -292,11 +292,13 @@ adipo create -o app.fat \
 - Library paths: `/opt/zen3/lib` checked before `/opt/x86-64-v3/lib`
 
 **Supported CPU aliases:**
-- **x86-64**: haswell, broadwell, skylake, skylake-avx512, icelake, zen, zen2, zen3, zen4
-- **ARM64 Linux**: neoverse-n1, neoverse-n2, neoverse-v1, neoverse-v2, graviton2, graviton3, cortex-a76
-- **ARM64 macOS**: apple-m1, apple-m2, apple-m3, apple-m4
+- **x86-64 Intel**: haswell, broadwell, skylake, skylake-avx512, cannonlake, icelake, tigerlake, rocketlake, alderlake, raptorlake, meteorlake, arrowlake, arrowlake-s, lunarlake, sapphirerapids, emeraldrapids, graniterapids, graniterapids-d, sierraforest
+- **x86-64 AMD**: zen, zen2, zen3, zen4, zen5
+- **ARM64 Linux cores**: cortex-a57, cortex-a72, cortex-a73, cortex-a75, cortex-a76, cortex-a520, cortex-a725, cortex-x925, neoverse-n1, neoverse-n2, neoverse-n3, neoverse-v1, neoverse-v2, neoverse-v3, c1-pro, c1-ultra, c1-premium, ampere1, ampere1a
+- **ARM64 cloud/vendor hints**: graviton2, graviton3, graviton4, graviton5, google-axion, google-axion-n4a, azure-cobalt100, nvidia-grace
+- **ARM64 macOS**: apple-m1, apple-m2, apple-m3, apple-m4, apple-m5
 
-Use `adipo detect-cpu` to find valid aliases for your architecture.
+Use `adipo detect-cpu` to find valid aliases for your architecture. Cloud/vendor hints that share the same MIDR part number as a Neoverse core are accepted as build-time hints, but automatic detection reports the generic core alias.
 
 ### Hardware Capabilities Execution
 

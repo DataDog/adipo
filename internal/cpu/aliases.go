@@ -15,16 +15,16 @@ import (
 
 // CPUAlias represents a CPU alias mapping
 type CPUAlias struct {
-	Name         string                // GCC-style CPU name (e.g., "skylake", "zen3", "apple-m3")
-	Architecture format.Architecture   // Architecture this alias applies to
-	MinVersion   format.ArchVersion    // Minimum version this CPU supports
+	Name         string              // GCC-style CPU name (e.g., "skylake", "zen3", "apple-m3")
+	Architecture format.Architecture // Architecture this alias applies to
+	MinVersion   format.ArchVersion  // Minimum version this CPU supports
 }
 
 // X86CPUAlias maps x86-64 CPU family:model to aliases
 type X86CPUAlias struct {
-	Family      int      // CPU family
-	Model       int      // CPU model (0 means match any model in family)
-	NamePattern string   // Substring match in model name (empty = match any)
+	Family      int    // CPU family
+	Model       int    // CPU model (0 means match any model in family)
+	NamePattern string // Substring match in model name (empty = match any)
 	Alias       CPUAlias
 }
 
@@ -52,11 +52,49 @@ var X86CPUAliases = []X86CPUAlias{
 	{6, 85, "W", CPUAlias{"skylake-avx512", format.ArchX86_64, format.X86_64_V4}},
 	{6, 85, "", CPUAlias{"skylake", format.ArchX86_64, format.X86_64_V3}}, // Fallback for non-AVX512
 
+	// Intel Cannon Lake (Family 6, Model 102)
+	{6, 102, "", CPUAlias{"cannonlake", format.ArchX86_64, format.X86_64_V3}},
+
 	// Intel Ice Lake (Family 6, Model 106, 108, 125, 126)
 	{6, 106, "", CPUAlias{"icelake", format.ArchX86_64, format.X86_64_V4}},
 	{6, 108, "", CPUAlias{"icelake", format.ArchX86_64, format.X86_64_V4}},
 	{6, 125, "", CPUAlias{"icelake", format.ArchX86_64, format.X86_64_V4}},
 	{6, 126, "", CPUAlias{"icelake", format.ArchX86_64, format.X86_64_V4}},
+
+	// Intel Tiger Lake (Family 6, Model 140, 141)
+	{6, 140, "", CPUAlias{"tigerlake", format.ArchX86_64, format.X86_64_V3}},
+	{6, 141, "", CPUAlias{"tigerlake", format.ArchX86_64, format.X86_64_V3}},
+
+	// Intel Rocket Lake (Family 6, Model 167)
+	{6, 167, "", CPUAlias{"rocketlake", format.ArchX86_64, format.X86_64_V3}},
+
+	// Intel Alder Lake (Family 6, Model 151, 154)
+	{6, 151, "", CPUAlias{"alderlake", format.ArchX86_64, format.X86_64_V3}},
+	{6, 154, "", CPUAlias{"alderlake", format.ArchX86_64, format.X86_64_V3}},
+
+	// Intel Raptor Lake (Family 6, Model 183, 186, 191)
+	{6, 183, "", CPUAlias{"raptorlake", format.ArchX86_64, format.X86_64_V3}},
+	{6, 186, "", CPUAlias{"raptorlake", format.ArchX86_64, format.X86_64_V3}},
+	{6, 191, "", CPUAlias{"raptorlake", format.ArchX86_64, format.X86_64_V3}},
+
+	// Intel Meteor Lake (Family 6, Model 170, 172)
+	{6, 170, "", CPUAlias{"meteorlake", format.ArchX86_64, format.X86_64_V3}},
+	{6, 172, "", CPUAlias{"meteorlake", format.ArchX86_64, format.X86_64_V3}},
+
+	// Intel Arrow Lake/Lunar Lake (Family 6, Model 181, 189, 197, 198)
+	{6, 181, "", CPUAlias{"arrowlake", format.ArchX86_64, format.X86_64_V3}},
+	{6, 197, "", CPUAlias{"arrowlake", format.ArchX86_64, format.X86_64_V3}},
+	{6, 198, "", CPUAlias{"arrowlake-s", format.ArchX86_64, format.X86_64_V3}},
+	{6, 189, "", CPUAlias{"lunarlake", format.ArchX86_64, format.X86_64_V3}},
+
+	// Intel Sapphire Rapids/Emerald Rapids (Family 6, Model 143, 207)
+	{6, 143, "", CPUAlias{"sapphirerapids", format.ArchX86_64, format.X86_64_V4}},
+	{6, 207, "", CPUAlias{"emeraldrapids", format.ArchX86_64, format.X86_64_V4}},
+
+	// Intel Granite Rapids/Granite Rapids-D/Sierra Forest (Family 6, Model 173, 174, 175)
+	{6, 173, "", CPUAlias{"graniterapids", format.ArchX86_64, format.X86_64_V4}},
+	{6, 174, "", CPUAlias{"graniterapids-d", format.ArchX86_64, format.X86_64_V4}},
+	{6, 175, "", CPUAlias{"sierraforest", format.ArchX86_64, format.X86_64_V3}},
 
 	// AMD Zen (Family 23, Model 1, 17, 24)
 	{23, 1, "", CPUAlias{"zen", format.ArchX86_64, format.X86_64_V3}},
@@ -75,12 +113,15 @@ var X86CPUAliases = []X86CPUAlias{
 	// AMD Zen 4 (Family 25, Model 97, 104)
 	{25, 97, "", CPUAlias{"zen4", format.ArchX86_64, format.X86_64_V4}},
 	{25, 104, "", CPUAlias{"zen4", format.ArchX86_64, format.X86_64_V4}},
+
+	// AMD Zen 5 / EPYC Turin (Family 26 / 0x1a)
+	{26, 0, "", CPUAlias{"zen5", format.ArchX86_64, format.X86_64_V4}},
 }
 
 // ARMCPUAlias maps ARM64 implementer:part to aliases
 type ARMCPUAlias struct {
-	Implementer int      // ARM implementer ID
-	PartNum     int      // ARM part number
+	Implementer int // ARM implementer ID
+	PartNum     int // ARM part number
 	Alias       CPUAlias
 }
 
@@ -92,24 +133,43 @@ var ARMCPUAliases = []ARMCPUAlias{
 	{0x41, 0xd09, CPUAlias{"cortex-a73", format.ArchARM64, format.ARM64_V8_0}},
 	{0x41, 0xd0a, CPUAlias{"cortex-a75", format.ArchARM64, format.ARM64_V8_2}},
 	{0x41, 0xd0b, CPUAlias{"cortex-a76", format.ArchARM64, format.ARM64_V8_2}},
+	{0x41, 0xd80, CPUAlias{"cortex-a520", format.ArchARM64, format.ARM64_V9_2}},
+	{0x41, 0xd85, CPUAlias{"cortex-x925", format.ArchARM64, format.ARM64_V9_2}},
+	{0x41, 0xd87, CPUAlias{"cortex-a725", format.ArchARM64, format.ARM64_V9_2}},
 
 	// ARM Neoverse
 	{0x41, 0xd0c, CPUAlias{"neoverse-n1", format.ArchARM64, format.ARM64_V8_2}},
 	{0x41, 0xd40, CPUAlias{"neoverse-v1", format.ArchARM64, format.ARM64_V8_4}},
 	{0x41, 0xd49, CPUAlias{"neoverse-n2", format.ArchARM64, format.ARM64_V9_0}},
 	{0x41, 0xd4f, CPUAlias{"neoverse-v2", format.ArchARM64, format.ARM64_V9_0}},
+	{0x41, 0xd84, CPUAlias{"neoverse-v3", format.ArchARM64, format.ARM64_V9_2}},
+	{0x41, 0xd8e, CPUAlias{"neoverse-n3", format.ArchARM64, format.ARM64_V9_2}},
 
-	// AWS Graviton (same as Neoverse, but keep separate alias)
+	// ARM C1 platform cores
+	{0x41, 0xd8b, CPUAlias{"c1-pro", format.ArchARM64, format.ARM64_V9_2}},
+	{0x41, 0xd8c, CPUAlias{"c1-ultra", format.ArchARM64, format.ARM64_V9_2}},
+	{0x41, 0xd90, CPUAlias{"c1-premium", format.ArchARM64, format.ARM64_V9_2}},
+
+	// Cloud vendor aliases. These share MIDR values with the underlying Neoverse cores;
+	// automatic detection returns the generic core alias listed above, while these names
+	// remain valid build-time CPU hints.
 	{0x41, 0xd0c, CPUAlias{"graviton2", format.ArchARM64, format.ARM64_V8_2}},
 	{0x41, 0xd40, CPUAlias{"graviton3", format.ArchARM64, format.ARM64_V8_4}},
+	{0x41, 0xd4f, CPUAlias{"graviton4", format.ArchARM64, format.ARM64_V9_0}},
+	{0x41, 0xd84, CPUAlias{"graviton5", format.ArchARM64, format.ARM64_V9_2}},
+	{0x41, 0xd4f, CPUAlias{"google-axion", format.ArchARM64, format.ARM64_V9_0}},
+	{0x41, 0xd8e, CPUAlias{"google-axion-n4a", format.ArchARM64, format.ARM64_V9_2}},
+	{0x41, 0xd49, CPUAlias{"azure-cobalt100", format.ArchARM64, format.ARM64_V9_0}},
+	{0x41, 0xd4f, CPUAlias{"nvidia-grace", format.ArchARM64, format.ARM64_V9_0}},
 
 	// Ampere
 	{0xc0, 0xac3, CPUAlias{"ampere1", format.ArchARM64, format.ARM64_V8_2}},
+	{0xc0, 0xac4, CPUAlias{"ampere1a", format.ArchARM64, format.ARM64_V8_6}},
 }
 
 // AppleSiliconAlias represents Apple Silicon CPU aliases
 type AppleSiliconAlias struct {
-	Pattern string   // Regex pattern to match in brand string
+	Pattern string // Regex pattern to match in brand string
 	Alias   CPUAlias
 }
 
@@ -119,6 +179,7 @@ var AppleSiliconAliases = []AppleSiliconAlias{
 	{`Apple M2`, CPUAlias{"apple-m2", format.ArchARM64, format.ARM64_V8_0}},
 	{`Apple M3`, CPUAlias{"apple-m3", format.ArchARM64, format.ARM64_V8_0}},
 	{`Apple M4`, CPUAlias{"apple-m4", format.ArchARM64, format.ARM64_V8_0}},
+	{`Apple M5`, CPUAlias{"apple-m5", format.ArchARM64, format.ARM64_V8_0}},
 }
 
 // DetectCPUAlias attempts to determine CPU alias from model information
