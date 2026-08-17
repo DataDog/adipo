@@ -53,11 +53,11 @@ Templates support these variables:
 | `{{.ArchTriple}}` | `x86_64` | `aarch64` | Debian multiarch triple |
 | `{{.Version}}` | `v3` | `v9.4` | Version string |
 | `{{.ArchVersion}}` | `x86-64-v3` | `aarch64-v9.4` | Full arch-version |
-| `{{.CPUAlias}}` | `zen3` | `apple-m3` | CPU-specific hint (see below) |
+| `{{.CPUAlias}}` | `zen5` | `neoverse-v3` | CPU-specific hint (see below) |
 
 **CPU Alias (`{{.CPUAlias}}`):**
 
-The `{{.CPUAlias}}` variable expands to the detected CPU microarchitecture name (e.g., `zen3`, `skylake`, `apple-m3`). Use it to ship CPU-optimized libraries alongside version-based paths.
+The `{{.CPUAlias}}` variable expands to the detected CPU microarchitecture name (e.g., `zen5`, `sapphirerapids`, `neoverse-v3`, `apple-m5`). Use it to ship CPU-optimized libraries alongside version-based paths.
 
 - **Requires**: Binary built with `--binary FILE:ARCH:CPU-HINT`
 - **Runtime**: Detected CPU alias must match the build-time hint
@@ -85,7 +85,7 @@ adipo create -o app.fat \
 # 3. /opt/x86-64-v2/lib      (fallback)
 ```
 
-Use `adipo detect-cpu` to see your CPU alias and valid aliases for your architecture.
+Use `adipo detect-cpu` to see your CPU alias and valid aliases for your architecture. Supported aliases include recent Intel server/client CPUs, AMD Zen generations through Zen 5, Arm Neoverse N3/V3, AmpereOne A, Apple M5, and cloud/vendor hints such as Graviton4/5, Google Axion, Azure Cobalt 100, and NVIDIA Grace.
 
 ### Custom Templates
 
