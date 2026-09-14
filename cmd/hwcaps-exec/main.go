@@ -172,11 +172,7 @@ func runHwcapsExec(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "\n\n")
 	}
 
-	if err := extractor.Execute(program, programArgs, modifiedEnv); err != nil {
-		return fmt.Errorf("execution failed: %w", err)
-	}
-
-	return nil
+	return fmt.Errorf("execution failed: %w", extractor.Execute(program, programArgs, modifiedEnv))
 }
 
 func printScanResults(results []hwcaps.ScanResult, selected []hwcaps.ScanResult, libraryPath string) {

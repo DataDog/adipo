@@ -18,12 +18,12 @@ type CapstoneDisassembler struct{}
 
 // NewCapstoneDisassembler returns an error when Capstone is not available
 func NewCapstoneDisassembler(arch format.Architecture) (*CapstoneDisassembler, error) {
-	return nil, errors.New("Capstone support not compiled in. Rebuild with: go build -tags capstone")
+	return nil, errors.New("capstone support not compiled in, rebuild with: go build -tags capstone")
 }
 
 // DisassembleBytes is a stub
 func (d *CapstoneDisassembler) DisassembleBytes(data []byte, maxInstructions int) ([]Instruction, error) {
-	return nil, errors.New("Capstone not available")
+	return nil, errors.New("capstone not available")
 }
 
 // MapCapstoneGroupsToFeatures is a stub

@@ -130,11 +130,12 @@ func ScanDirectories(config *ScanConfig) []ScanResult {
 		result.Priority = int(pathVersion)
 
 		// Boost priority for standard hwcaps paths
-		if candidate.source == SourceStandardHwcaps {
+		switch candidate.source {
+		case SourceStandardHwcaps:
 			result.Priority += 10000
-		} else if candidate.source == SourceTemplate {
+		case SourceTemplate:
 			result.Priority += 1000
-		} else if candidate.source == SourceOptPattern {
+		case SourceOptPattern:
 			result.Priority += 100
 		}
 

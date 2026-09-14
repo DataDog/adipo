@@ -61,7 +61,7 @@ func (s *InstructionStatistics) Format() string {
 	var sb strings.Builder
 
 	sb.WriteString("Instruction Statistics:\n")
-	sb.WriteString(fmt.Sprintf("  Total instructions analyzed: %s\n", formatNumber(s.TotalInstructions)))
+	fmt.Fprintf(&sb, "  Total instructions analyzed: %s\n", formatNumber(s.TotalInstructions))
 
 	if len(s.FeatureGroupCounts) == 0 {
 		sb.WriteString("  No feature-specific instructions detected\n")
@@ -86,10 +86,10 @@ func (s *InstructionStatistics) Format() string {
 	// Display top features
 	for _, fc := range sorted {
 		percentage := float64(fc.count) / float64(s.TotalInstructions) * 100
-		sb.WriteString(fmt.Sprintf("    %-20s %s (%.1f%%)\n",
+		fmt.Fprintf(&sb, "    %-20s %s (%.1f%%)\n",
 			fc.name+" instructions:",
 			formatNumber(fc.count),
-			percentage))
+			percentage)
 	}
 
 	return sb.String()
