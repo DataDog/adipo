@@ -32,14 +32,14 @@ func (m *MemoryExtractor) Extract(data []byte, name string) (string, func(), err
 	// Write binary data
 	_, err = unix.Write(fd, data)
 	if err != nil {
-		unix.Close(fd)
+		_ = unix.Close(fd)
 		return "", nil, fmt.Errorf("failed to write to memfd: %w", err)
 	}
 
 	// Make executable (fchmod)
 	err = unix.Fchmod(fd, 0755)
 	if err != nil {
-		unix.Close(fd)
+		_ = unix.Close(fd)
 		return "", nil, fmt.Errorf("failed to chmod memfd: %w", err)
 	}
 
@@ -48,7 +48,7 @@ func (m *MemoryExtractor) Extract(data []byte, name string) (string, func(), err
 
 	// Cleanup function
 	cleanup := func() {
-		unix.Close(fd)
+		_ = unix.Close(fd)
 	}
 
 	return path, cleanup, nil
