@@ -31,7 +31,10 @@ go_library(
 
 go_test(
     name = "cpu_test",
-    srcs = ["capabilities_test.go"],
+    srcs = [
+        "aliases_test.go",
+        "capabilities_test.go",
+    ],
     embed = [":cpu"],
     deps = ["//internal/format"],
 )

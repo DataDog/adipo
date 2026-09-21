@@ -3,7 +3,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2024-2026 Datadog, Inc.
 
-
 package selector
 
 import (
@@ -164,6 +163,56 @@ func TestSelectBinaryVerbose_NoCompatible(t *testing.T) {
 	}
 }
 
+func TestSelectBinaryWithVendorCPUHint(t *testing.T) {
+	tests := []struct {
+		name             string
+		hint             string
+		partNum          int
+		requiredFeatures uint64
+		genericPriority  uint32
+		wantIndex        int
+	}{
+		{"Graviton4 matches V2", "graviton4", 0xd4f, 0, 0, 1},
+		{"Axion matches V2", "google-axion", 0xd4f, 0, 0, 1},
+		{"Grace matches V2", "nvidia-grace", 0xd4f, 0, 0, 1},
+		{"different core gets no bonus", "graviton3", 0xd4f, 0, 0, 0},
+		{"unknown core gets no bonus", "graviton4", 0, 0, 0, 0},
+		{"hint cannot bypass required features", "graviton4", 0xd4f, 1, 0, 0},
+		{"explicit priority still wins", "graviton4", 0xd4f, 0, 1, 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			caps := &cpu.Capabilities{
+				ArchType: format.ArchARM64,
+				Version:  format.ARM64_V9_0,
+				CPUModel: &cpu.CPUModel{Implementer: 0x41, PartNum: tt.partNum},
+			}
+			generic := &format.BinaryMetadata{
+				Architecture: format.ArchARM64,
+				ArchVersion:  format.ARM64_V9_0,
+				Priority:     tt.genericPriority,
+			}
+			tuned := &format.BinaryMetadata{
+				Architecture:     format.ArchARM64,
+				ArchVersion:      format.ARM64_V9_0,
+				RequiredFeatures: tt.requiredFeatures,
+				CompressedSize:   2 * 1024 * 1024, // Loses to generic without the alias bonus.
+			}
+			if err := tuned.SetCPUHint(tt.hint); err != nil {
+				t.Fatal(err)
+			}
+			index, _, err := NewSelector(caps, []*format.BinaryMetadata{generic, tuned}).SelectBinary()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if index != tt.wantIndex {
+				t.Errorf("selected index = %d, want %d", index, tt.wantIndex)
+			}
+		})
+	}
+}
+
 func TestSelectBinaryWithCPUAlias(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -214,7 +263,7 @@ func TestSelectBinaryWithCPUAlias(t *testing.T) {
 				Version:  format.X86_64_V3,
 				CPUModel: &cpu.CPUModel{
 					Vendor: "GenuineIntel",
-					Family: 6,  // Skylake
+					Family: 6, // Skylake
 					Model:  94,
 				},
 			},

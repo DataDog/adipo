@@ -1,0 +1,12 @@
+load("@rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "cpu_hints_test",
+    srcs = ["cpu_hints_test.go"],
+    importpath = "github.com/DataDog/adipo/test/integration",
+    deps = [
+        "//internal/cpu",
+        "//internal/format",
+        "//internal/selector",
+    ],
+)

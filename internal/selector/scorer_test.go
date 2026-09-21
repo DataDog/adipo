@@ -3,7 +3,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2024-2026 Datadog, Inc.
 
-
 package selector
 
 import (
@@ -44,6 +43,43 @@ func TestScore(t *testing.T) {
 			score := s.Score(tt.bin)
 			if score != tt.wantScore {
 				t.Errorf("Score() = %d, want %d", score, tt.wantScore)
+			}
+		})
+	}
+}
+
+func TestCPUHintMatchBonus(t *testing.T) {
+	tests := []struct {
+		name     string
+		arch     format.Architecture
+		detected string
+		hint     string
+		want     int
+	}{
+		{"vendor hint", format.ArchARM64, "neoverse-v2", "graviton4", 500},
+		{"equivalent vendor hint", format.ArchARM64, "neoverse-v2", "google-axion", 500},
+		{"canonical hint", format.ArchARM64, "neoverse-v2", "neoverse-v2", 500},
+		{"different core", format.ArchARM64, "neoverse-v2", "graviton3", 0},
+		{"no detected alias", format.ArchARM64, "", "graviton4", 0},
+		{"no hint", format.ArchARM64, "neoverse-v2", "", 0},
+		{"x86 exact match", format.ArchX86_64, "zen3", "zen3", 500},
+		{"x86 mismatch", format.ArchX86_64, "zen3", "skylake", 0},
+		{"Apple exact match", format.ArchARM64, "apple-m5", "apple-m5", 500},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			binary := &format.BinaryMetadata{Architecture: tt.arch}
+			if err := binary.SetCPUHint(tt.hint); err != nil {
+				t.Fatal(err)
+			}
+			baseline := NewScorer().Score(binary)
+			got := NewScorerWithCPUAlias(tt.detected).Score(binary) - baseline
+			if got != tt.want {
+				t.Errorf("CPU hint bonus = %d, want %d", got, tt.want)
+			}
+			if got := binary.GetCPUHint(); got != tt.hint {
+				t.Errorf("scoring changed stored hint to %q, want %q", got, tt.hint)
 			}
 		})
 	}
