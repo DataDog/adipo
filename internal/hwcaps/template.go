@@ -3,7 +3,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2024-2026 Datadog, Inc.
 
-
 package hwcaps
 
 import (
@@ -44,19 +43,20 @@ func NewTemplateEvaluator(arch format.Architecture, version format.ArchVersion) 
 	}, nil
 }
 
-// EvaluateTemplates expands templates and returns existing paths in priority order
-// If cpuHint matches the detected CPU alias, paths with {{.CPUAlias}} are prioritized
+// EvaluateTemplates expands templates and returns existing paths in priority order.
+// If cpuHint matches the detected core (including vendor synonyms), templates with
+// {{.CPUAlias}} are evaluated first at the current version. Expansion always uses
+// the detected core name, not the vendor hint. Remaining paths use version/template order.
 func (e *TemplateEvaluator) EvaluateTemplates(templates []string, cpuHint string) []string {
 	var validPaths []string
 	seen := make(map[string]bool)
 
-	// Check if CPU hint matches detected CPU for priority boost
-	aliasMatch := cpuHint != "" && e.cpuAlias != "" && cpuHint == e.cpuAlias
-
-	// If alias matches, evaluate templates at current version first (priority boost for alias paths)
-	// This allows /opt/zen3/lib to be checked before /opt/x86-64-v3/lib
-	if aliasMatch {
+	// Matching hints prioritize alias paths even when their templates are listed last.
+	if cpu.CPUHintsMatch(cpuHint, e.cpuAlias, e.arch) {
 		for _, template := range templates {
+			if !strings.Contains(template, "{{.CPUAlias}}") {
+				continue
+			}
 			path := e.expandTemplate(template, e.version)
 
 			// Only add if path exists and not already seen
