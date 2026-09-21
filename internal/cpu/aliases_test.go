@@ -156,6 +156,85 @@ func TestListValidAliasesIncludesNewCPUs(t *testing.T) {
 	}
 }
 
+func TestVendorCPUHintsMatchDetectedCore(t *testing.T) {
+	tests := []struct {
+		hint      string
+		partNum   int
+		canonical string
+	}{
+		{"graviton2", 0xd0c, "neoverse-n1"},
+		{"graviton3", 0xd40, "neoverse-v1"},
+		{"graviton4", 0xd4f, "neoverse-v2"},
+		{"graviton5", 0xd84, "neoverse-v3"},
+		{"google-axion", 0xd4f, "neoverse-v2"},
+		{"google-axion-n4a", 0xd8e, "neoverse-n3"},
+		{"azure-cobalt100", 0xd49, "neoverse-n2"},
+		{"nvidia-grace", 0xd4f, "neoverse-v2"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.hint, func(t *testing.T) {
+			model := &CPUModel{Implementer: 0x41, PartNum: tt.partNum}
+			detected := DetectCPUAlias(model, format.ArchARM64)
+			if detected != tt.canonical {
+				t.Fatalf("detected alias = %q, want canonical core %q", detected, tt.canonical)
+			}
+			if !CPUHintsMatch(tt.hint, detected, format.ArchARM64) {
+				t.Errorf("hint %q should match detected core %q", tt.hint, detected)
+			}
+			if !CPUHintsMatch(detected, tt.hint, format.ArchARM64) {
+				t.Error("canonical matching should be symmetric")
+			}
+			alias, err := ValidateCPUHint(tt.hint, format.ArchARM64)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if alias.Name != tt.hint {
+				t.Errorf("validation changed hint to %q, want %q", alias.Name, tt.hint)
+			}
+		})
+	}
+}
+
+func TestCPUHintsMatch(t *testing.T) {
+	tests := []struct {
+		name     string
+		hint     string
+		detected string
+		arch     format.Architecture
+		want     bool
+	}{
+		{"same core", "neoverse-v2", "neoverse-v2", format.ArchARM64, true},
+		{"equivalent vendors", "graviton4", "nvidia-grace", format.ArchARM64, true},
+		{"case and whitespace", " GRAVITON4 ", " NEOVERSE-V2 ", format.ArchARM64, true},
+		{"different cores", "graviton3", "neoverse-v2", format.ArchARM64, false},
+		{"different vendors and cores", "graviton4", "graviton5", format.ArchARM64, false},
+		{"x86 exact match", "zen3", "zen3", format.ArchX86_64, true},
+		{"x86 different cores", "zen3", "zen4", format.ArchX86_64, false},
+		{"shared x86 model is not equivalent", "skylake", "skylake-avx512", format.ArchX86_64, false},
+		{"Apple exact match", "apple-m5", "apple-m5", format.ArchARM64, true},
+		{"different Apple cores", "apple-m4", "apple-m5", format.ArchARM64, false},
+		{"different ARM vendors", "ampere1a", "apple-m5", format.ArchARM64, false},
+		{"ARM hints on x86", "graviton4", "neoverse-v2", format.ArchX86_64, false},
+		{"x86 hints on ARM", "zen3", "zen3", format.ArchARM64, false},
+		{"unknown architecture", "zen3", "zen3", format.ArchUnknown, false},
+		{"empty hint", "", "neoverse-v2", format.ArchARM64, false},
+		{"empty detection", "graviton4", "", format.ArchARM64, false},
+		{"both empty", "", "", format.ArchARM64, false},
+		{"unknown hint", "unknown", "neoverse-v2", format.ArchARM64, false},
+		{"unknown detection", "graviton4", "unknown", format.ArchARM64, false},
+		{"both unknown", "unknown", "unknown", format.ArchARM64, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := CPUHintsMatch(tt.hint, tt.detected, tt.arch); got != tt.want {
+				t.Errorf("CPUHintsMatch(%q, %q, %s) = %v, want %v", tt.hint, tt.detected, tt.arch, got, tt.want)
+			}
+		})
+	}
+}
+
 func toAliasSet(aliases []string) map[string]bool {
 	result := make(map[string]bool, len(aliases))
 	for _, alias := range aliases {

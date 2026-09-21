@@ -3,12 +3,12 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2024-2026 Datadog, Inc.
 
-
 package selector
 
 import (
 	"sort"
 
+	"github.com/DataDog/adipo/internal/cpu"
 	"github.com/DataDog/adipo/internal/format"
 )
 
@@ -62,21 +62,9 @@ func (s *Scorer) Score(binary *format.BinaryMetadata) int {
 	return score
 }
 
-// cpuAliasScore returns 1 if CPU alias matches, 0 otherwise
+// cpuAliasScore returns 1 if the hint matches the detected core, 0 otherwise.
 func (s *Scorer) cpuAliasScore(binary *format.BinaryMetadata) int {
-	// No bonus if we don't have a detected CPU alias
-	if s.detectedCPUAlias == "" {
-		return 0
-	}
-
-	// Check if binary has a CPU hint
-	binaryHint := binary.GetCPUHint()
-	if binaryHint == "" {
-		return 0 // Binary has no hint, no bonus
-	}
-
-	// Bonus if hints match exactly
-	if binaryHint == s.detectedCPUAlias {
+	if cpu.CPUHintsMatch(binary.GetCPUHint(), s.detectedCPUAlias, binary.Architecture) {
 		return 1 // Will be multiplied by 500 in Score()
 	}
 

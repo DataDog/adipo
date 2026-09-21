@@ -298,7 +298,9 @@ adipo create -o app.fat \
 - **ARM64 cloud/vendor hints**: graviton2, graviton3, graviton4, graviton5, google-axion, google-axion-n4a, azure-cobalt100, nvidia-grace
 - **ARM64 macOS**: apple-m1, apple-m2, apple-m3, apple-m4, apple-m5
 
-Use `adipo detect-cpu` to find valid aliases for your architecture. Cloud/vendor hints that share the same MIDR part number as a Neoverse core are accepted as build-time hints, but automatic detection reports the generic core alias.
+Use `adipo detect-cpu` to find valid aliases for your architecture. Cloud/vendor hints that share the same MIDR implementer and part number as a Neoverse core match that core for binary selection and library-path priority. Automatic detection and `{{.CPUAlias}}` expansion still report the generic core alias: for example, `graviton4`, `google-axion`, and `nvidia-grace` all match `neoverse-v2` and use `/opt/neoverse-v2/lib`, not vendor-named directories.
+
+These are **CPU-tuning hints, not cloud-provider restrictions**. Equivalent hints receive the same selection bonus; the other scoring rules decide between them. Architecture, version, and required-feature compatibility checks still apply, and the original hint remains visible in binary metadata.
 
 ### Hardware Capabilities Execution
 

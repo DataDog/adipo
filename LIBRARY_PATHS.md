@@ -59,10 +59,10 @@ Templates support these variables:
 
 The `{{.CPUAlias}}` variable expands to the detected CPU microarchitecture name (e.g., `zen5`, `sapphirerapids`, `neoverse-v3`, `apple-m5`). Use it to ship CPU-optimized libraries alongside version-based paths.
 
-- **Requires**: Binary built with `--binary FILE:ARCH:CPU-HINT`
-- **Runtime**: Detected CPU alias must match the build-time hint
-- **Priority**: When hint matches, alias paths are checked BEFORE version paths
-- **Empty**: If no hint or no match, expands to empty string (path filtered out)
+- **Expansion**: Uses the detected core name, independently of the binary's hint
+- **Matching**: A hint supplied with `--binary FILE:ARCH:CPU-HINT` matches its canonical core; cloud/vendor synonyms count as matches
+- **Priority**: When the hint matches, templates containing `{{.CPUAlias}}` are evaluated first at the selected binary's version, even if they appear after version-only templates
+- **Without a match**: Paths are still evaluated, but follow the normal version-first/template order without a boost
 
 Example:
 ```bash
@@ -86,6 +86,23 @@ adipo create -o app.fat \
 ```
 
 Use `adipo detect-cpu` to see your CPU alias and valid aliases for your architecture. Supported aliases include recent Intel server/client CPUs, AMD Zen generations through Zen 5, Arm Neoverse N3/V3, AmpereOne A, Apple M5, and cloud/vendor hints such as Graviton4/5, Google Axion, Azure Cobalt 100, and NVIDIA Grace.
+
+### Cloud/Vendor Hints
+
+Cloud/vendor hints are synonyms for the underlying core when matching, not cloud-provider restrictions:
+
+| Build-time hint | Canonical core / `{{.CPUAlias}}` |
+|-----------------|--------------------------------|
+| `graviton2` | `neoverse-n1` |
+| `graviton3` | `neoverse-v1` |
+| `graviton4`, `google-axion`, `nvidia-grace` | `neoverse-v2` |
+| `graviton5` | `neoverse-v3` |
+| `google-axion-n4a` | `neoverse-n3` |
+| `azure-cobalt100` | `neoverse-n2` |
+
+For example, a binary with hint `graviton4` on a detected Neoverse V2 core gets the same selection bonus as one with hint `neoverse-v2`. A template `/opt/{{.CPUAlias}}/lib` expands to `/opt/neoverse-v2/lib` and is prioritized when it exists. It does **not** expand to `/opt/graviton4/lib`, and matching does not prove that the machine is an AWS instance.
+
+The original hint is preserved in metadata for inspection. Equivalent vendor hints receive equal bonuses; existing priority, version, feature and size scoring still breaks ties. Hints never bypass architecture/version/required-feature compatibility checks.
 
 ### Custom Templates
 
@@ -165,9 +182,10 @@ This ensures binaries compiled for v9.4 can use libraries in v9.0 or older direc
 ## Priority Order
 
 Library paths are prioritized by:
-1. **Version match** - Exact version matches come first, then fallback to older versions
-2. **Template order** - Within each version, templates are evaluated in order
-3. **Existence** - Only paths that exist on disk are included
+1. **CPU hint match** - Matching `{{.CPUAlias}}` templates are evaluated first at the selected binary's version, in their original relative order
+2. **Version match** - Remaining paths use the selected version first, then fall back to older versions
+3. **Template order** - Within each version, remaining templates are evaluated in order
+4. **Existence and deduplication** - Only existing directories are included, each at most once
 
 For example, with default templates on x86-64 v3:
 1. All v3 paths: Debian multiarch (template 0), RedHat lib64 (template 1), /opt (template 2)
@@ -285,6 +303,6 @@ go test -tags=integration ./internal/hwcaps/...
 - Templates stored in Reserved field: 388 bytes available
 - Each template is length-prefixed (2 bytes) for efficient parsing
 - Version fallback uses explicit ARM64 version list (format.ARM64VersionFallbackOrder)
-- Paths are collected in version-first order: for each version, expand all templates
+- Matching CPU-alias templates at the selected binary's version are evaluated first; remaining paths are collected in version-first/template order
 - Template evaluation happens at runtime, not build time
 - Duplicate paths are automatically removed using a seen map during evaluation

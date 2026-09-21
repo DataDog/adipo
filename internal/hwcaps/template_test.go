@@ -3,12 +3,12 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2024-2026 Datadog, Inc.
 
-
 package hwcaps
 
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/DataDog/adipo/internal/format"
@@ -324,7 +324,6 @@ func TestNonExistentPaths(t *testing.T) {
 	}
 }
 
-// TestPathOrdering tests that paths are returned in correct priority order
 // TestCPUAliasPriority tests that paths with {{.CPUAlias}} are prioritized when hint matches
 func TestCPUAliasPriority(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -347,9 +346,10 @@ func TestCPUAliasPriority(t *testing.T) {
 		t.Fatalf("failed to create v2 directory: %v", err)
 	}
 
+	// Put the version template first so this tests the boost, not template order.
 	templates := []string{
-		tmpDir + "/opt/{{.CPUAlias}}/lib",
 		tmpDir + "/opt/{{.ArchVersion}}/lib",
+		tmpDir + "/opt/{{.CPUAlias}}/lib",
 	}
 
 	evaluator := &TemplateEvaluator{
@@ -383,9 +383,10 @@ func TestCPUAliasPriority(t *testing.T) {
 		t.Errorf("expected 3 valid paths, got %d: %v", len(validPaths2), validPaths2)
 	}
 
-	// Without priority boost, all 3 paths are still found
-	// The key difference is that matching hint evaluates templates BEFORE version fallback
-	// Here we verify the paths are all present (order may vary by template order)
+	// Without priority boost, all paths are still found in version/template order.
+	if len(validPaths2) > 0 && validPaths2[0] != v3Path {
+		t.Errorf("first path without hint = %s, want %s", validPaths2[0], v3Path)
+	}
 	pathSet := make(map[string]bool)
 	for _, p := range validPaths2 {
 		pathSet[p] = true
@@ -400,8 +401,80 @@ func TestCPUAliasPriority(t *testing.T) {
 	if len(validPaths3) != 3 {
 		t.Errorf("expected 3 valid paths with wrong hint, got %d: %v", len(validPaths3), validPaths3)
 	}
+	if !slices.Equal(validPaths3, validPaths2) {
+		t.Errorf("wrong hint paths = %v, want no-hint order %v", validPaths3, validPaths2)
+	}
 }
 
+func TestVendorCPUHintPathPriority(t *testing.T) {
+	tests := []struct {
+		hint     string
+		detected string
+		boost    bool
+	}{
+		{"graviton2", "neoverse-n1", true},
+		{"graviton3", "neoverse-v1", true},
+		{"graviton4", "neoverse-v2", true},
+		{"graviton5", "neoverse-v3", true},
+		{"google-axion", "neoverse-v2", true},
+		{"google-axion-n4a", "neoverse-n3", true},
+		{"azure-cobalt100", "neoverse-n2", true},
+		{"nvidia-grace", "neoverse-v2", true},
+		{"neoverse-v2", "neoverse-v2", true},
+		{" GRAVITON4 ", "neoverse-v2", true},
+		{"graviton3", "neoverse-v2", false},
+		{"", "neoverse-v2", false},
+		{"unknown", "neoverse-v2", false},
+		{"graviton4", "", false},
+		{"apple-m5", "apple-m5", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.hint+"/"+tt.detected, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			versionPath := filepath.Join(tmpDir, "versions/aarch64-v9.0/lib")
+			fallbackPath := filepath.Join(tmpDir, "versions/aarch64-v8.2/lib")
+			aliasPath := filepath.Join(tmpDir, "cores", tt.detected, "lib")
+			secondAliasPath := filepath.Join(tmpDir, "extra", tt.detected, "lib")
+			dirs := []string{versionPath, fallbackPath}
+			if tt.detected != "" {
+				dirs = append(dirs, aliasPath, secondAliasPath)
+			}
+			// A vendor-named directory must not replace the canonical core path.
+			if tt.hint != "" {
+				dirs = append(dirs, filepath.Join(tmpDir, "cores", tt.hint, "lib"))
+			}
+			for _, dir := range dirs {
+				if err := os.MkdirAll(dir, 0755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			templates := []string{
+				tmpDir + "/versions/{{.ArchVersion}}/lib",
+				tmpDir + "/cores/{{.CPUAlias}}/lib",
+				tmpDir + "/missing/{{.CPUAlias}}/lib",
+				tmpDir + "/extra/{{.CPUAlias}}/lib",
+				tmpDir + "/cores/{{.CPUAlias}}/lib", // Deduplicated even in the boost pass.
+			}
+			evaluator := &TemplateEvaluator{
+				arch:     format.ArchARM64,
+				version:  format.ARM64_V9_0,
+				cpuAlias: tt.detected,
+			}
+			want := []string{versionPath, fallbackPath}
+			if tt.boost {
+				want = []string{aliasPath, secondAliasPath, versionPath, fallbackPath}
+			} else if tt.detected != "" {
+				want = []string{versionPath, aliasPath, secondAliasPath, fallbackPath}
+			}
+			if got := evaluator.EvaluateTemplates(templates, tt.hint); !slices.Equal(got, want) {
+				t.Errorf("paths = %v, want %v", got, want)
+			}
+		})
+	}
+}
+
+// TestPathOrdering tests that paths are returned in correct priority order.
 func TestPathOrdering(t *testing.T) {
 	tmpDir := t.TempDir()
 

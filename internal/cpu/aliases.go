@@ -151,8 +151,8 @@ var ARMCPUAliases = []ARMCPUAlias{
 	{0x41, 0xd90, CPUAlias{"c1-premium", format.ArchARM64, format.ARM64_V9_2}},
 
 	// Cloud vendor aliases. These share MIDR values with the underlying Neoverse cores;
-	// automatic detection returns the generic core alias listed above, while these names
-	// remain valid build-time CPU hints.
+	// automatic detection returns the generic core alias listed above. CPUHintsMatch
+	// treats these hints as synonyms for that core, not as cloud/platform restrictions.
 	{0x41, 0xd0c, CPUAlias{"graviton2", format.ArchARM64, format.ARM64_V8_2}},
 	{0x41, 0xd40, CPUAlias{"graviton3", format.ArchARM64, format.ARM64_V8_4}},
 	{0x41, 0xd4f, CPUAlias{"graviton4", format.ArchARM64, format.ARM64_V9_0}},
@@ -283,6 +283,38 @@ func ValidateCPUHint(hint string, arch format.Architecture) (*CPUAlias, error) {
 	}
 
 	return nil, fmt.Errorf("unknown CPU hint %q for architecture %s", hint, arch.String())
+}
+
+// CPUHintsMatch reports whether two known CPU aliases name the same core for arch.
+// ARM aliases sharing an implementer and part number are canonicalized to the
+// first matching table entry, just like DetectCPUAlias. This does not identify a
+// cloud provider or replace architecture/version/feature compatibility checks.
+// Empty, unknown or wrong-architecture aliases do not match.
+func CPUHintsMatch(hint, detectedAlias string, arch format.Architecture) bool {
+	canonicalHint := canonicalCPUAlias(hint, arch)
+	return canonicalHint != "" && canonicalHint == canonicalCPUAlias(detectedAlias, arch)
+}
+
+// canonicalCPUAlias resolves a known alias without changing the stored CPU hint.
+func canonicalCPUAlias(name string, arch format.Architecture) string {
+	alias, err := ValidateCPUHint(name, arch)
+	if err != nil {
+		return ""
+	}
+
+	if arch == format.ArchARM64 {
+		for _, armAlias := range ARMCPUAliases {
+			if armAlias.Alias.Name == alias.Name {
+				return detectARMAlias(&CPUModel{
+					Implementer: armAlias.Implementer,
+					PartNum:     armAlias.PartNum,
+				})
+			}
+		}
+	}
+
+	// Keep x86 and Apple aliases distinct; only ARM MIDR aliases are synonyms.
+	return alias.Name
 }
 
 // ListValidAliases returns all valid CPU aliases for the given architecture
