@@ -5,8 +5,8 @@ go 1.27.1
 require (
 	github.com/bnagy/gapstone v0.0.0-20190828052830-ede92aaeaba7
 	github.com/klauspost/compress v1.20.0
-	github.com/olekukonko/tablewriter v1.1.4
-	github.com/pierrec/lz4/v4 v4.1.29
+	github.com/olekukonko/tablewriter v1.1.5
+	github.com/pierrec/lz4/v4 v4.1.30
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/sys v0.48.0
 	gopkg.in/yaml.v3 v3.0.1
